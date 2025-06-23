@@ -1,16 +1,15 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../DividendCheckpoint.sol";
 import "./ERC20DividendCheckpointStorage.sol";
 import "../../../../interfaces/IOwnable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Checkpoint module for issuing ERC20 dividends
  */
 contract ERC20DividendCheckpoint is ERC20DividendCheckpointStorage, DividendCheckpoint {
-    using SafeMath for uint256;
-
     event ERC20DividendDeposited(
         address indexed _depositor,
         uint256 _checkpointId,
@@ -156,40 +155,42 @@ contract ERC20DividendCheckpoint is ERC20DividendCheckpointStorage, DividendChec
         require(_excluded.length <= EXCLUDED_ADDRESS_LIMIT, "Too many addresses excluded");
         require(_expiry > _maturity, "Expiry before maturity");
         /*solium-disable-next-line security/no-block-members*/
-        require(_expiry > now, "Expiry in past");
+        require(_expiry > block.timestamp, "Expiry in past");
         require(_amount > 0, "No dividend sent");
         require(_token != address(0), "Invalid token");
         require(_checkpointId <= securityToken.currentCheckpointId(), "Invalid checkpoint");
         require(IERC20(_token).transferFrom(msg.sender, address(this), _amount), "insufficent allowance");
         require(_name != bytes32(0));
         uint256 dividendIndex = dividends.length;
+        
+        dividends.push(); // Add new empty Dividend struct to storage
+        Dividend storage newDividend = dividends[dividendIndex]; // Get a reference to it
+
+        newDividend.checkpointId = _checkpointId;
+        newDividend.created = block.timestamp; /*solium-disable-line security/no-block-members*/
+        newDividend.maturity = _maturity;
+        newDividend.expiry = _expiry;
+        newDividend.amount = _amount;
+        newDividend.claimedAmount = 0;
+        newDividend.totalWithheld = 0;
+        newDividend.reclaimed = false;
+        newDividend.totalWithheldWithdrawn = 0;
+        // newDividend.totalSupply will be set after calculating excludedSupply
+        newDividend.name = _name;
+        // Mappings (dividendExcluded, claimed, withheld) are initialized to empty by default
+
         uint256 currentSupply = securityToken.totalSupplyAt(_checkpointId);
         require(currentSupply > 0, "Invalid supply");
         uint256 excludedSupply = 0;
-        dividends.push(
-            Dividend(
-                _checkpointId,
-                now, /*solium-disable-line security/no-block-members*/
-                _maturity,
-                _expiry,
-                _amount,
-                0,
-                0,
-                false,
-                0,
-                0,
-                _name
-            )
-        );
 
         for (uint256 j = 0; j < _excluded.length; j++) {
             require(_excluded[j] != address(0), "Invalid address");
-            require(!dividends[dividendIndex].dividendExcluded[_excluded[j]], "duped exclude address");
-            excludedSupply = excludedSupply.add(securityToken.balanceOfAt(_excluded[j], _checkpointId));
-            dividends[dividendIndex].dividendExcluded[_excluded[j]] = true;
+            require(!newDividend.dividendExcluded[_excluded[j]], "duped exclude address");
+            excludedSupply = excludedSupply + (securityToken.balanceOfAt(_excluded[j], _checkpointId));
+            newDividend.dividendExcluded[_excluded[j]] = true;
         }
         require(currentSupply > excludedSupply, "Invalid supply");
-        dividends[dividendIndex].totalSupply = currentSupply - excludedSupply;
+        newDividend.totalSupply = currentSupply - excludedSupply;
         dividendTokens[dividendIndex] = _token;
         _emitERC20DividendDepositedEvent(_checkpointId, _maturity, _expiry, _token, _amount, currentSupply, dividendIndex, _name);
     }
@@ -230,16 +231,16 @@ contract ERC20DividendCheckpoint is ERC20DividendCheckpointStorage, DividendChec
      * @param _dividend Storage with previously issued dividends
      * @param _dividendIndex Dividend to pay
      */
-    function _payDividend(address payable _payee, Dividend storage _dividend, uint256 _dividendIndex) internal {
+    function _payDividend(address payable _payee, Dividend storage _dividend, uint256 _dividendIndex) internal override {
         (uint256 claim, uint256 withheld) = calculateDividend(_dividendIndex, _payee);
         _dividend.claimed[_payee] = true;
-        _dividend.claimedAmount = claim.add(_dividend.claimedAmount);
-        uint256 claimAfterWithheld = claim.sub(withheld);
+        _dividend.claimedAmount = claim + (_dividend.claimedAmount);
+        uint256 claimAfterWithheld = claim - (withheld);
         if (claimAfterWithheld > 0) {
             require(IERC20(dividendTokens[_dividendIndex]).transfer(_payee, claimAfterWithheld), "transfer failed");
         }
         if (withheld > 0) {
-            _dividend.totalWithheld = _dividend.totalWithheld.add(withheld);
+            _dividend.totalWithheld = _dividend.totalWithheld + (withheld);
             _dividend.withheld[_payee] = withheld;
         }
         emit ERC20DividendClaimed(_payee, _dividendIndex, dividendTokens[_dividendIndex], claim, withheld);
@@ -249,14 +250,14 @@ contract ERC20DividendCheckpoint is ERC20DividendCheckpointStorage, DividendChec
      * @notice Issuer can reclaim remaining unclaimed dividend amounts, for expired dividends
      * @param _dividendIndex Dividend to reclaim
      */
-    function reclaimDividend(uint256 _dividendIndex) external withPerm(OPERATOR) {
+    function reclaimDividend(uint256 _dividendIndex) external override withPerm(OPERATOR) {
         require(_dividendIndex < dividends.length, "Invalid dividend");
         /*solium-disable-next-line security/no-block-members*/
-        require(now >= dividends[_dividendIndex].expiry, "Dividend expiry in future");
+        require(block.timestamp >= dividends[_dividendIndex].expiry, "Dividend expiry in future");
         require(!dividends[_dividendIndex].reclaimed, "already claimed");
         dividends[_dividendIndex].reclaimed = true;
         Dividend storage dividend = dividends[_dividendIndex];
-        uint256 remainingAmount = dividend.amount.sub(dividend.claimedAmount);
+        uint256 remainingAmount = dividend.amount - (dividend.claimedAmount);
         require(IERC20(dividendTokens[_dividendIndex]).transfer(getTreasuryWallet(), remainingAmount), "transfer failed");
         emit ERC20DividendReclaimed(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingAmount);
     }
@@ -265,10 +266,10 @@ contract ERC20DividendCheckpoint is ERC20DividendCheckpointStorage, DividendChec
      * @notice Allows issuer to withdraw withheld tax
      * @param _dividendIndex Dividend to withdraw from
      */
-    function withdrawWithholding(uint256 _dividendIndex) external withPerm(OPERATOR) {
+    function withdrawWithholding(uint256 _dividendIndex) external override withPerm(OPERATOR) {
         require(_dividendIndex < dividends.length, "Invalid dividend");
         Dividend storage dividend = dividends[_dividendIndex];
-        uint256 remainingWithheld = dividend.totalWithheld.sub(dividend.totalWithheldWithdrawn);
+        uint256 remainingWithheld = dividend.totalWithheld - (dividend.totalWithheldWithdrawn);
         dividend.totalWithheldWithdrawn = dividend.totalWithheld;
         require(IERC20(dividendTokens[_dividendIndex]).transfer(getTreasuryWallet(), remainingWithheld), "transfer failed");
         emit ERC20DividendWithholdingWithdrawn(wallet, _dividendIndex, dividendTokens[_dividendIndex], remainingWithheld);

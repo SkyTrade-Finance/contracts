@@ -1,17 +1,15 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../Module.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../storage/modules/STO/STOStorage.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../interfaces/ISTO.sol";
 
 /**
  * @title Base abstract contract to be extended by all STO modules
  */
-contract STO is ISTO, STOStorage, Module {
-    using SafeMath for uint256;
-
+abstract contract STO is ISTO, STOStorage, Module {
     /**
      * @notice Returns funds raised by the STO
      */
@@ -22,15 +20,15 @@ contract STO is ISTO, STOStorage, Module {
     /**
      * @notice Returns the total no. of tokens sold
      */
-    function getTokensSold() external view returns (uint256);
+    function getTokensSold() external view virtual returns (uint256);
 
     /**
      * @notice Pause (overridden function)
      * @dev Only securityToken owner restriction applied on the super function
      */
-    function pause() public {
+    function pause() public override(ISTO, Module) {
         /*solium-disable-next-line security/no-block-members*/
-        require(now < endTime, "STO has been finalized");
+        require(block.timestamp < endTime, "STO has been finalized");
         super.pause();
     }
 

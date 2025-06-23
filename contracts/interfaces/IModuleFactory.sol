@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Interface that every module factory contract should implement
@@ -81,13 +82,13 @@ interface IModuleFactory {
 
     /**
      * @notice Used to get the lower bound
-     * @return Lower bound
+     * @return lowerBounds
      */
     function getLowerSTVersionBounds() external view returns(uint8[] memory lowerBounds);
 
     /**
      * @notice Used to get the upper bound
-     * @return Upper bound
+     * @return upperBounds
      */
     function getUpperSTVersionBounds() external view returns(uint8[] memory upperBounds);
 

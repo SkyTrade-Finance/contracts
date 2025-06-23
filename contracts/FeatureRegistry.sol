@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./ReclaimTokens.sol";
 import "./interfaces/IFeatureRegistry.sol";
@@ -18,6 +19,8 @@ contract FeatureRegistry is IFeatureRegistry, ReclaimTokens {
         bytes32 key = keccak256(bytes(_nameKey));
         return featureStatus[key];
     }
+
+    constructor(address intitialOwner) ReclaimTokens(intitialOwner) {}
 
     /**
      * @notice change a feature status

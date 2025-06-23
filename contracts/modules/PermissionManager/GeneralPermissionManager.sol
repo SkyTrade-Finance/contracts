@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./IPermissionManager.sol";
 import "../Module.sol";
@@ -66,7 +67,7 @@ contract GeneralPermissionManager is GeneralPermissionManagerStorage, IPermissio
         for (uint256 i = 0; i < delegateLen; i++) {
             if (allDelegates[i] == _delegate) {
                 allDelegates[i] = allDelegates[delegateLen - 1];
-                allDelegates.length--;
+                allDelegates.pop();
                 break;
             }
         }
@@ -92,7 +93,6 @@ contract GeneralPermissionManager is GeneralPermissionManagerStorage, IPermissio
      * @param _module Ethereum contract address of the module
      * @param _perm Permission flag
      * @param _valid Bool flag use to switch on/off the permission
-     * @return bool
      */
     function changePermission(address _delegate, address _module, bytes32 _perm, bool _valid) public withPerm(ADMIN) {
         require(_delegate != address(0), "invalid address");
@@ -105,7 +105,6 @@ contract GeneralPermissionManager is GeneralPermissionManagerStorage, IPermissio
      * @param _modules Multiple module matching the multiperms, needs to be same length
      * @param _perms Multiple permission flag needs to be changed
      * @param _valids Bool array consist the flag to switch on/off the permission
-     * @return nothing
      */
     function changePermissionMulti(
         address _delegate,
@@ -204,7 +203,6 @@ contract GeneralPermissionManager is GeneralPermissionManagerStorage, IPermissio
      * @param _module Ethereum contract address of the module
      * @param _perm Permission flag
      * @param _valid Bool flag use to switch on/off the permission
-     * @return bool
      */
     function _changePermission(address _delegate, address _module, bytes32 _perm, bool _valid) internal {
         perms[_module][_delegate][_perm] = _valid;
@@ -224,7 +222,7 @@ contract GeneralPermissionManager is GeneralPermissionManagerStorage, IPermissio
     * @notice Returns the Permission flag related the `this` contract
     * @return Array of permission flags
     */
-    function getPermissions() public view returns(bytes32[] memory) {
+    function getPermissions() public view override(IModule, IPermissionManager) returns(bytes32[] memory) {
         bytes32[] memory allPermissions = new bytes32[](1);
         allPermissions[0] = ADMIN;
         return allPermissions;

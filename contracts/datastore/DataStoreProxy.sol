@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../proxy/Proxy.sol";
 import "./DataStoreStorage.sol";
@@ -17,7 +18,6 @@ contract DataStoreProxy is DataStoreStorage, Proxy {
         address _securityToken,
         address _implementation
     )
-        public
     {
         require(_implementation != address(0) && _securityToken != address(0),
             "Address should not be 0x"
@@ -29,7 +29,7 @@ contract DataStoreProxy is DataStoreStorage, Proxy {
     /**
     * @notice Internal function to provide the address of the implementation contract
     */
-    function _implementation() internal view returns(address) {
+    function _implementation() internal override view returns(address) {
         return __implementation;
     }
 

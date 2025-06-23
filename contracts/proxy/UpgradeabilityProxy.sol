@@ -1,13 +1,14 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./Proxy.sol";
-import "openzeppelin-solidity/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title UpgradeabilityProxy
  * @dev This contract represents a proxy where the implementation address to which it will delegate can be upgraded
  */
-contract UpgradeabilityProxy is Proxy {
+abstract contract UpgradeabilityProxy is Proxy {
     // Version name of the current implementation
     string internal __version;
 
@@ -31,7 +32,7 @@ contract UpgradeabilityProxy is Proxy {
             __implementation != _newImplementation && _newImplementation != address(0),
             "Old address is not allowed and implementation address should not be 0x"
         );
-        require(Address.isContract(_newImplementation), "Cannot set a proxy implementation to a non-contract address");
+        require(_newImplementation.code.length > 0, "Cannot set a proxy implementation to a non-contract address");
         require(bytes(_newVersion).length > 0, "Version should not be empty string");
         require(keccak256(abi.encodePacked(__version)) != keccak256(abi.encodePacked(_newVersion)), "New version equals to current");
         __version = _newVersion;

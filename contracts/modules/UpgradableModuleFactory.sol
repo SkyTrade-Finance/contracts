@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./ModuleFactory.sol";
 import "../interfaces/IModuleRegistry.sol";
@@ -8,7 +9,7 @@ import "../proxy/OwnedUpgradeabilityProxy.sol";
 /**
  * @title Factory for deploying upgradable modules
  */
-contract UpgradableModuleFactory is ModuleFactory {
+abstract contract UpgradableModuleFactory is ModuleFactory {
 
     event LogicContractSet(string _version, uint256 _upgrade, address _logicContract, bytes _upgradeData);
 
@@ -50,7 +51,7 @@ contract UpgradableModuleFactory is ModuleFactory {
         address _polymathRegistry,
         bool _isCostInPoly
     )
-        public ModuleFactory(_setupCost, _polymathRegistry, _isCostInPoly)
+        ModuleFactory(_setupCost, _polymathRegistry, _isCostInPoly)
     {
         require(_logicContract != address(0), "Invalid address");
         logicContracts[latestUpgrade].logicContract = _logicContract;
@@ -109,7 +110,7 @@ contract UpgradableModuleFactory is ModuleFactory {
         // Only allow issuers to upgrade in single step verisons to preserve upgradeToAndCall semantics
         uint256 newVersion = modules[msg.sender][_module] + 1;
         require(newVersion <= latestUpgrade, "Incorrect version");
-        OwnedUpgradeabilityProxy(address(uint160(_module))).upgradeToAndCall(logicContracts[newVersion].version, logicContracts[newVersion].logicContract, logicContracts[newVersion].upgradeData);
+        OwnedUpgradeabilityProxy(payable(address(uint160(_module)))).upgradeToAndCall(logicContracts[newVersion].version, logicContracts[newVersion].logicContract, logicContracts[newVersion].upgradeData);
         modules[msg.sender][_module] = newVersion;
         emit ModuleUpgraded(
             _module,
@@ -123,7 +124,7 @@ contract UpgradableModuleFactory is ModuleFactory {
      * @param _module Address of module
      * @param _data Data used for the intialization of the module factory variables
      */
-    function _initializeModule(address _module, bytes memory _data) internal {
+    function _initializeModule(address _module, bytes memory _data) internal override {
         super._initializeModule(_module, _data);
         moduleToSecurityToken[_module] = msg.sender;
         modules[msg.sender][_module] = latestUpgrade;
@@ -132,7 +133,7 @@ contract UpgradableModuleFactory is ModuleFactory {
     /**
      * @notice Get the version related to the module factory
      */
-    function version() external view returns(string memory) {
+    function version() external view override returns(string memory) {
         return logicContracts[latestUpgrade].version;
     }
 

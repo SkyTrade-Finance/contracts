@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Utility contract for reusable code
@@ -53,7 +54,7 @@ library Util {
         uint charCount = 0;
         uint j = 0;
         for (j = 0; j < 32; j++) {
-            byte char = byte(bytes32(uint(_source) * 2 ** (8 * j)));
+            bytes1 char = bytes1(bytes32(uint(_source) * 2 ** (8 * j)));
             if (char != 0) {
                 bytesString[charCount] = char;
                 charCount++;
@@ -69,7 +70,7 @@ library Util {
     /**
      * @notice Gets function signature from _data
      * @param _data Passed data
-     * @return bytes4 sig
+     *  sig
      */
     function getSig(bytes memory _data) internal pure returns(bytes4 sig) {
         uint len = _data.length < 4 ? _data.length : 4;

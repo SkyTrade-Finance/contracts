@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /* 
  * @dev It is the contract that contains the storage items related to the ERC20 contract implementaiton

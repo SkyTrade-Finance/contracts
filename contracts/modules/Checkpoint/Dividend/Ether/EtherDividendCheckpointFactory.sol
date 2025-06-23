@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./EtherDividendCheckpointProxy.sol";
 import "../../../UpgradableModuleFactory.sol";
@@ -21,8 +22,8 @@ contract EtherDividendCheckpointFactory is UpgradableModuleFactory {
         address _polymathRegistry,
         bool _isCostInPoly
     )
-        public
         UpgradableModuleFactory("3.0.0", _setupCost, _logicContract, _polymathRegistry, _isCostInPoly)
+        Ownable(msg.sender)
     {
         name = "EtherDividendCheckpoint";
         title = "Ether Dividend Checkpoint";
@@ -37,7 +38,7 @@ contract EtherDividendCheckpointFactory is UpgradableModuleFactory {
 
     /**
      * @notice Used to launch the Module with the help of factory
-     * @return address Contract address of the Module
+     *  address Contract address of the Module
      */
     function deploy(bytes calldata _data) external returns(address) {
         address ethDividendCheckpoint = address(new EtherDividendCheckpointProxy(logicContracts[latestUpgrade].version, msg.sender, polymathRegistry.getAddress("PolyToken"), logicContracts[latestUpgrade].logicContract));

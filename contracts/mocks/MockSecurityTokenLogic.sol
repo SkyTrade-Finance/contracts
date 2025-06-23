@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../tokens/SecurityToken.sol";
 
@@ -16,6 +17,10 @@ contract MockSecurityTokenLogic is SecurityToken {
 
     event UpgradeEvent(uint256 _upgrade);
     uint256 public someValue;
+
+    constructor() {
+        initialize(msg.sender);
+    }
 
     /**
      * @notice Initialization function
@@ -47,20 +52,6 @@ contract MockSecurityTokenLogic is SecurityToken {
 
     function newFunction(uint256 _upgrade) external {
         emit UpgradeEvent(_upgrade);
-    }
-
-    //To reduce bytecode size
-    function addModuleWithLabel(
-        address /* _moduleFactory */,
-        bytes memory /* _data */,
-        uint256 /* _maxCost */,
-        uint256 /* _budget */,
-        bytes32 /* _label */,
-        bool /* _archived */
-    )
-        public
-    {
-        emit UpgradeEvent(0);
     }
 
 }

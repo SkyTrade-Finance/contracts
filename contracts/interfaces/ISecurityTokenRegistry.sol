@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Interface for the Polymath Security Token Registry contract
@@ -215,7 +216,7 @@ interface ISecurityTokenRegistry {
     /**
     * @notice Check that Security Token is registered
     * @param _securityToken Address of the Scurity token
-    * @return bool
+    * bool
     */
     function isSecurityToken(address _securityToken) external view returns(bool isValid);
 
@@ -228,17 +229,17 @@ interface ISecurityTokenRegistry {
     /**
      * @notice Get security token address by ticker name
      * @param _ticker Symbol of the Scurity token
-     * @return address
+     * address
      */
     function getSecurityTokenAddress(string calldata _ticker) external view returns(address tokenAddress);
 
     /**
     * @notice Returns the security token data by address
     * @param _securityToken is the address of the security token.
-    * @return string is the ticker of the security Token.
-    * @return address is the issuer of the security Token.
-    * @return string is the details of the security token.
-    * @return uint256 is the timestamp at which security Token was deployed.
+    * string is the ticker of the security Token.
+    * address is the issuer of the security Token.
+    * string is the details of the security token.
+    * uint256 is the timestamp at which security Token was deployed.
     */
     function getSecurityTokenData(address _securityToken) external view returns (
         string memory tokenSymbol,
@@ -285,11 +286,6 @@ interface ISecurityTokenRegistry {
     /**
      * @notice Returns the owner and timestamp for a given ticker
      * @param _ticker ticker
-     * @return address
-     * @return uint256
-     * @return uint256
-     * @return string
-     * @return bool
      */
     function getTickerDetails(string calldata _ticker) external view returns(address tickerOwner, uint256 tickerRegistration, uint256 tickerExpiry, string memory tokenName, bool tickerStatus);
 
@@ -394,13 +390,13 @@ interface ISecurityTokenRegistry {
 
     /**
      * @notice Gets the security token launch fee
-     * @return Fee amount
+     * Fee amount
      */
     function getSecurityTokenLaunchFee() external returns(uint256 fee);
 
     /**
      * @notice Gets the ticker registration fee
-     * @return Fee amount
+     * Fee amount
      */
     function getTickerRegistrationFee() external returns(uint256 fee);
 
@@ -425,33 +421,33 @@ interface ISecurityTokenRegistry {
 
     /**
      * @notice Gets the expiry limit
-     * @return Expiry limit
+     * Expiry limit
      */
     function getExpiryLimit() external view returns(uint256 expiry);
 
     /**
      * @notice Gets the status of the ticker
      * @param _ticker Ticker whose status need to determine
-     * @return bool
+     * bool
      */
     function getTickerStatus(string calldata _ticker) external view returns(bool status);
 
     /**
      * @notice Gets the fee currency
-     * @return true = poly, false = usd
+     * true = poly, false = usd
      */
     function getIsFeeInPoly() external view returns(bool isInPoly);
 
     /**
      * @notice Gets the owner of the ticker
      * @param _ticker Ticker whose owner need to determine
-     * @return address Address of the owner
+     * address Address of the owner
      */
     function getTickerOwner(string calldata _ticker) external view returns(address owner);
 
     /**
      * @notice Checks whether the registry is paused or not
-     * @return bool
+     * bool
      */
     function isPaused() external view returns(bool paused);
 
@@ -473,14 +469,14 @@ interface ISecurityTokenRegistry {
 
     /**
      * @notice Gets the owner of the contract
-     * @return address owner
+     * address owner
      */
     function owner() external view returns(address ownerAddress);
 
     /**
      * @notice Checks if the entered ticker is registered and has not expired
      * @param _ticker is the token ticker
-     * @return bool
+     * bool
      */
     function tickerAvailable(string calldata _ticker) external view returns(bool);
 

@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../UpgradableModuleFactory.sol";
 import "./GeneralPermissionManagerProxy.sol";
@@ -21,8 +22,8 @@ contract GeneralPermissionManagerFactory is UpgradableModuleFactory {
         address _polymathRegistry,
         bool _isCostInPoly
     )
-        public
         UpgradableModuleFactory("3.0.0", _setupCost, _logicContract, _polymathRegistry, _isCostInPoly)
+        Ownable(msg.sender)
     {
         name = "GeneralPermissionManager";
         title = "General Permission Manager";

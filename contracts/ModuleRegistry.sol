@@ -1,6 +1,7 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IModuleRegistry.sol";
 import "./interfaces/IModuleFactory.sol";
 import "./interfaces/ISecurityTokenRegistry.sol";
@@ -163,7 +164,7 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
      * @notice Check that a module and its factory are compatible
      * @param _moduleFactory is the address of the relevant module factory
      * @param _securityToken is the address of the relevant security token
-     * @return bool whether module and token are compatible
+     *  bool whether module and token are compatible
      */
     function isCompatibleModule(address _moduleFactory, address _securityToken) public view returns(bool) {
         uint8[] memory _latestVersion = ISecurityToken(_securityToken).getVersion();
@@ -286,8 +287,8 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
      * @notice Returns all the tags related to the a module type which are valid for the given token
      * @param _moduleType is the module type
      * @param _securityToken is the token
-     * @return list of tags
-     * @return corresponding list of module factories
+     *  list of tags
+     *  corresponding list of module factories
      */
     function getTagsByTypeAndToken(uint8 _moduleType, address _securityToken) external view returns(bytes32[] memory, address[] memory) {
         address[] memory modules = getModulesByTypeAndToken(_moduleType, _securityToken);
@@ -297,8 +298,8 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
     /**
      * @notice Returns all the tags related to the a module type which are valid for the given token
      * @param _moduleType is the module type
-     * @return list of tags
-     * @return corresponding list of module factories
+     *  list of tags
+     *  corresponding list of module factories
      */
     function getTagsByType(uint8 _moduleType) external view returns(bytes32[] memory, address[] memory) {
         address[] memory modules = getModulesByType(_moduleType);
@@ -308,8 +309,8 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
     /**
      * @notice Returns all the tags related to the modules provided
      * @param _modules modules to return tags for
-     * @return list of tags
-     * @return corresponding list of module factories
+     *  list of tags
+     *  corresponding list of module factories
      */
     function _tagsByModules(address[] memory _modules) internal view returns(bytes32[] memory, address[] memory) {
         uint256 counter = 0;
@@ -336,9 +337,9 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
     /**
      * @notice Returns the verified status, and reputation of the entered Module Factory
      * @param _factoryAddress is the address of the module factory
-     * @return bool indicating whether module factory is verified
-     * @return address of the factory owner
-     * @return address array which contains the list of securityTokens that use that module factory
+     *  bool indicating whether module factory is verified
+     *  address of the factory owner
+     *  address array which contains the list of securityTokens that use that module factory
      */
     function getFactoryDetails(address _factoryAddress) external view returns(bool, address, address[] memory) {
         return (getBoolValue(Encoder.getKey("verified", _factoryAddress)), getAddressValue(Encoder.getKey("factoryOwner", _factoryAddress)), getArrayAddress(Encoder.getKey("reputation", _factoryAddress)));
@@ -347,7 +348,7 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
     /**
      * @notice Returns the list of addresses of verified Module Factory of a particular type
      * @param _moduleType Type of Module
-     * @return address array that contains the list of addresses of module factory contracts.
+     *  address array that contains the list of addresses of module factory contracts.
      */
     function getModulesByType(uint8 _moduleType) public view returns(address[] memory) {
         address[] memory _addressList = getArrayAddress(Encoder.getKey("moduleList", uint256(_moduleType)));
@@ -373,7 +374,7 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
     /**
      * @notice Returns the list of addresses of all Module Factory of a particular type
      * @param _moduleType Type of Module
-     * @return address array that contains the list of addresses of module factory contracts.
+     *  address array that contains the list of addresses of module factory contracts.
      */
     function getAllModulesByType(uint8 _moduleType) external view returns(address[] memory) {
         return getArrayAddress(Encoder.getKey("moduleList", uint256(_moduleType)));
@@ -383,7 +384,7 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
      * @notice Returns the list of available Module factory addresses of a particular type for a given token.
      * @param _moduleType is the module type to look for
      * @param _securityToken is the address of SecurityToken
-     * @return address array that contains the list of available addresses of module factory contracts.
+     *  address array that contains the list of available addresses of module factory contracts.
      */
     function getModulesByTypeAndToken(uint8 _moduleType, address _securityToken) public view returns(address[] memory) {
         address[] memory _addressList = getArrayAddress(Encoder.getKey("moduleList", uint256(_moduleType)));
@@ -472,7 +473,7 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
 
     /**
      * @notice Gets the owner of the contract
-     * @return address owner
+     * @return owner - address
      */
     function owner() public view returns(address) {
         return getAddressValue(OWNER);
@@ -480,7 +481,6 @@ contract ModuleRegistry is IModuleRegistry, EternalStorage {
 
     /**
      * @notice Checks whether the contract operations is paused or not
-     * @return bool
      */
     function isPaused() public view returns(bool) {
         return getBoolValue(PAUSED);

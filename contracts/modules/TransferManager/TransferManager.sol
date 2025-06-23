@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../Module.sol";
 import "../../interfaces/ITransferManager.sol";
@@ -6,7 +7,7 @@ import "../../interfaces/ITransferManager.sol";
 /**
  * @title Base abstract contract to be implemented by all Transfer Manager modules
  */
-contract TransferManager is ITransferManager, Module {
+abstract contract TransferManager is ITransferManager, Module {
 
     bytes32 public constant LOCKED = "LOCKED";
     bytes32 public constant UNLOCKED = "UNLOCKED";
@@ -24,7 +25,7 @@ contract TransferManager is ITransferManager, Module {
      * This condition is valid only when the base contract doesn't implement the
      * `getTokensByPartition()` function.  
      */
-    function getTokensByPartition(bytes32 _partition, address _tokenHolder, uint256 /*_additionalBalance*/) external view returns(uint256) {
+    function getTokensByPartition(bytes32 _partition, address _tokenHolder, uint256 /*_additionalBalance*/) external virtual view returns(uint256) {
         if (_partition == UNLOCKED)
             return securityToken.balanceOf(_tokenHolder);
         return uint256(0);

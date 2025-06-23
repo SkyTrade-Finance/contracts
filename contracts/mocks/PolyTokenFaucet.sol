@@ -1,6 +1,5 @@
-pragma solidity 0.5.8;
-
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /*
  POLY token faucet is only used on testnet for testing purposes
@@ -8,7 +7,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 */
 
 contract PolyTokenFaucet {
-    using SafeMath for uint256;
     uint256 totalSupply_;
     string public name = "Polymath Network";
     uint8 public decimals;
@@ -31,8 +29,8 @@ contract PolyTokenFaucet {
     function getTokens(uint256 _amount, address _recipient) public returns(bool) {
         require(_amount <= 1000000 * uint256(10) ** decimals, "Amount should not exceed 1 million");
         require(_recipient != address(0), "Recipient address can not be empty");
-        balances[_recipient] = balances[_recipient].add(_amount);
-        totalSupply_ = totalSupply_.add(_amount);
+        balances[_recipient] = balances[_recipient] + (_amount);
+        totalSupply_ = totalSupply_ + (_amount);
         emit Transfer(address(0), _recipient, _amount);
         return true;
     }
@@ -41,11 +39,11 @@ contract PolyTokenFaucet {
      * @notice Sends `_value` tokens to `_to` from `msg.sender`
      * @param _to The address of the recipient
      * @param _value The amount of token to be transferred
-     * @return Whether the transfer was successful or not
+     * Whether the transfer was successful or not
      */
     function transfer(address _to, uint256 _value) public returns(bool) {
-        balances[msg.sender] = balances[msg.sender].sub(_value);
-        balances[_to] = balances[_to].add(_value);
+        balances[msg.sender] = balances[msg.sender] - (_value);
+        balances[_to] = balances[_to] + (_value);
         emit Transfer(msg.sender, _to, _value);
         return true;
     }
@@ -55,16 +53,16 @@ contract PolyTokenFaucet {
      * @param _from The address of the sender
      * @param _to The address of the recipient
      * @param _value The amount of token to be transferred
-     * @return Whether the transfer was successful or not
+     * Whether the transfer was successful or not
      */
     function transferFrom(address _from, address _to, uint256 _value) public returns(bool) {
         require(_to != address(0), "Invalid address");
         require(_value <= balances[_from], "Insufficient tokens transferable");
         require(_value <= allowed[_from][msg.sender], "Insufficient tokens allowable");
 
-        balances[_from] = balances[_from].sub(_value);
-        balances[_to] = balances[_to].add(_value);
-        allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
+        balances[_from] = balances[_from] - (_value);
+        balances[_to] = balances[_to] + (_value);
+        allowed[_from][msg.sender] = allowed[_from][msg.sender] - (_value);
         emit Transfer(_from, _to, _value);
         return true;
     }
@@ -72,7 +70,7 @@ contract PolyTokenFaucet {
     /**
      * @notice Returns the balance of a token holder
      * @param _owner The address from which the balance will be retrieved
-     * @return The balance
+     * The balance
      */
     function balanceOf(address _owner) public view returns(uint256 balance) {
         return balances[_owner];
@@ -82,7 +80,7 @@ contract PolyTokenFaucet {
      * @notice Used by `msg.sender` to approve `_spender` to spend `_value` tokens
      * @param _spender The address of the account able to transfer the tokens
      * @param _value The amount of tokens to be approved for transfer
-     * @return Whether the approval was successful or not
+     * Whether the approval was successful or not
      */
     function approve(address _spender, uint256 _value) public returns(bool) {
         allowed[msg.sender][_spender] = _value;
@@ -93,7 +91,7 @@ contract PolyTokenFaucet {
     /**
      * @param _owner The address of the account owning tokens
      * @param _spender The address of the account able to transfer the tokens
-     * @return Amount of remaining tokens allowed to be spent
+     * Amount of remaining tokens allowed to be spent
      */
     function allowance(address _owner, address _spender) public view returns(uint256 remaining) {
         return allowed[_owner][_spender];
@@ -113,7 +111,7 @@ contract PolyTokenFaucet {
      * @param _addedValue The amount of tokens to increase the allowance by.
      */
     function increaseApproval(address _spender, uint _addedValue) public returns(bool) {
-        allowed[msg.sender][_spender] = (allowed[msg.sender][_spender].add(_addedValue));
+        allowed[msg.sender][_spender] = (allowed[msg.sender][_spender] + (_addedValue));
         emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
         return true;
     }
@@ -133,7 +131,7 @@ contract PolyTokenFaucet {
         if (_subtractedValue > oldValue) {
             allowed[msg.sender][_spender] = 0;
         } else {
-            allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
+            allowed[msg.sender][_spender] = oldValue - (_subtractedValue);
         }
         emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
         return true;

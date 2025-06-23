@@ -1,35 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.5.8;
+pragma solidity 0.8.30;
 
 import "./ITradingRestrictionManager.sol";
-import "openzeppelin-solidity/contracts/cryptography/MerkleProof.sol";
-
-/**
- * @dev Replaces OpenZeppelin's Ownable for Solidity 0.5.8
- */
-contract Ownable {
-    address public owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    constructor () public {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Ownable: caller is not the owner");
-        _;
-    }
-
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-}
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     bytes32 private _root;
+
+    constructor() Ownable(msg.sender) {}
 
     mapping(address => bool) public isOperator;
     mapping(address => InvestorKYCData) private _kycData;
@@ -151,7 +130,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
             : nonUSTradingRestrictionPeriod[token];
 
         uint64 unlockTime = startTime + restrictionPeriod;
-        uint64 sendAfter = now >= unlockTime ? _past() : unlockTime;
+        uint64 sendAfter = block.timestamp >= unlockTime ? _past() : unlockTime;
 
         return (
             sendAfter,
@@ -162,10 +141,10 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     }
 
     function _future() internal view returns (uint64) {
-        return uint64(now + (1 days));
+        return uint64(block.timestamp + (1 days));
     }
 
     function _past() internal view returns (uint64) {
-        return uint64(now - (1 days));
+        return uint64(block.timestamp - (1 days));
     }
 }

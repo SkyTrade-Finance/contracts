@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../../../../proxy/OwnedUpgradeabilityProxy.sol";
 import "../../../../storage/modules/Checkpoint/Dividend/DividendCheckpointStorage.sol";

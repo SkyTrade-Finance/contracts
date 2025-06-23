@@ -1,14 +1,12 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./OZStorage.sol";
 import "./SecurityTokenStorage.sol";
 import "../libraries/TokenLib.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../modules/PermissionManager/IPermissionManager.sol";
 
 contract STGetter is OZStorage, SecurityTokenStorage {
-
-    using SafeMath for uint256;
 
     /**
      * @notice A security token issuer can specify that issuance has finished for the token
@@ -40,7 +38,6 @@ contract STGetter is OZStorage, SecurityTokenStorage {
     /**
      * @notice returns an array of investors
      * NB - this length may differ from investorCount as it contains all investors that ever held tokens
-     * @return list of addresses
      */
     function getInvestors() public view returns(address[] memory investors) {
         investors = dataStore.getAddressArray(INVESTORSKEY);
@@ -206,7 +203,7 @@ contract STGetter is OZStorage, SecurityTokenStorage {
      * @return Whether the `_operator` is an operator for all partitions of `_tokenHolder`
      */
     function isOperator(address _operator, address _tokenHolder) external view returns (bool) {
-        return (_allowance(_tokenHolder, _operator) == uint(-1));
+        return (_allowance(_tokenHolder, _operator) == type(uint256).max);
     }
 
     /**

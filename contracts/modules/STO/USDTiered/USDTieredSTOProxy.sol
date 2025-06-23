@@ -1,9 +1,10 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../../../proxy/OwnedUpgradeabilityProxy.sol";
 import "./USDTieredSTOStorage.sol";
 import "../../../Pausable.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../../storage/modules/STO/STOStorage.sol";
 import "../../../storage/modules/ModuleStorage.sol";
 

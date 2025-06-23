@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 interface ICheckPermission {
     /**
@@ -8,7 +9,8 @@ interface ICheckPermission {
      * @param _delegate address of delegate
      * @param _module address of PermissionManager module
      * @param _perm the permissions
-     * @return success
+     *  hasPerm
      */
-    function checkPermission(address _delegate, address _module, bytes32 _perm) external view returns(bool hasPerm);
+    function checkPermission(address _delegate, address _module, bytes32 _perm) 
+        external view returns(bool hasPerm);
 }
