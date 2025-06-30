@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: MIT 
-pragma solidity 0.8.30;
 /**
     //
         IMPORTANT: Developer should update the ISecurityTokenRegistry.sol (Interface) if there is any change in
@@ -8,8 +6,10 @@ pragma solidity 0.8.30;
 
  */
 
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./libraries/token/ERC20/IERC20.sol";
 import "./interfaces/IOwnable.sol";
 import "./interfaces/ISTFactory.sol";
 import "./interfaces/ISecurityToken.sol";
@@ -21,7 +21,6 @@ import "./libraries/Encoder.sol";
 import "./libraries/VersionUtils.sol";
 import "./libraries/DecimalMath.sol";
 import "./proxy/Proxy.sol";
-import "hardhat/console.sol";
 
 /**
  * @title Registry contract for issuers to register their tickers and security tokens
@@ -164,10 +163,6 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
     event ProtocolFactorySet(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
     event LatestVersionSet(uint8 _major, uint8 _minor, uint8 _patch);
     event ProtocolFactoryRemoved(address indexed _STFactory, uint8 _major, uint8 _minor, uint8 _patch);
-
-    // Custom error for reverting with an address
-    error RevertWithAddress(address _address);
-
     /////////////////////////////
     // Modifiers
     /////////////////////////////
@@ -224,14 +219,9 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
     /////////////////////////////
 
     // Constructor
-    constructor() {
+    constructor() public {
         set(INITIALIZE, true);
     }
-
-    /**
-     * @notice Receive function to accept ETH
-     */
-    receive() external payable {}
 
     /**
      * @notice Initializes instance of STR
@@ -331,7 +321,7 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
         set(STRGETTER, _getterContract);
     }
 
-    function _implementation() internal view override returns(address) {
+    function _implementation() internal override view returns(address) {
         return getAddressValue(STRGETTER);
     }
 
@@ -643,8 +633,8 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
         /*solium-disable-next-line security/no-block-members*/
         require(getUintValue(Encoder.getKey("registeredTickers_expiryDate", _ticker)) >= block.timestamp, "Ticker expired");
         (uint256 _usdFee, uint256 _polyFee) = _takeFee(STLAUNCHFEE);
-        console.log(_protocolVersion);
-        address newSecurityTokenAddress = _deployToken(_name, _ticker, _tokenDetails, issuer, _divisible, _treasuryWallet, _protocolVersion);
+        address newSecurityTokenAddress =
+            _deployToken(_name, _ticker, _tokenDetails, issuer, _divisible, _treasuryWallet, _protocolVersion);
         if (_protocolVersion == VersionUtils.pack(2, 0, 0)) {
             // For backwards compatibilty. Should be removed with an update when we disable st 2.0 generation.
             emit NewSecurityToken(
@@ -713,13 +703,6 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
             _wallet = getAddressValue(POLYMATHREGISTRY);
         }
 
-        // address t1 = getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion));
-
-        // if (msg.sender != address(0)) {
-        //     // Replace `RevertWithAddress` with your actual custom error name if different.
-        //     revert RevertWithAddress(t1);
-        // }
-        require(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion)) != address(0), "Bad protocol version");
         newSecurityTokenAddress = ISTFactory(getAddressValue(Encoder.getKey("protocolVersionST", _protocolVersion))).deployToken(
             _name,
             _ticker,
@@ -897,7 +880,6 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
     function reclaimERC20(address _tokenContract) public onlyOwner {
         require(_tokenContract != address(0), "Bad address");
         IERC20 token = IERC20(_tokenContract);
-        require(msg.sender == address(0), "test");
         uint256 balance = token.balanceOf(address(this));
         require(token.transfer(owner(), balance), "Transfer failed");
     }

@@ -23,7 +23,7 @@ contract DummySTOFactory is UpgradableModuleFactory {
         bool _isCostInPoly
     )
         UpgradableModuleFactory("3.0.0", _setupCost, _logicContract, _polymathRegistry, _isCostInPoly)
-        Ownable(msg.sender)
+        Ownable()
     {
         name = "DummySTO";
         title = "Dummy STO";

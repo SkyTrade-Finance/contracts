@@ -18,10 +18,6 @@ contract MockSecurityTokenLogic is SecurityToken {
     event UpgradeEvent(uint256 _upgrade);
     uint256 public someValue;
 
-    constructor() {
-        initialize(msg.sender);
-    }
-
     /**
      * @notice Initialization function
      * @dev Expected to be called atomically with the proxy being created, by the owner of the token
@@ -52,6 +48,21 @@ contract MockSecurityTokenLogic is SecurityToken {
 
     function newFunction(uint256 _upgrade) external {
         emit UpgradeEvent(_upgrade);
+    }
+
+    //To reduce bytecode size
+    function addModuleWithLabel(
+        address /* _moduleFactory */,
+        bytes memory /* _data */,
+        uint256 /* _maxCost */,
+        uint256 /* _budget */,
+        bytes32 /* _label */,
+        bool /* _archived */
+    )
+        public
+        override
+    {
+        emit UpgradeEvent(0);
     }
 
 }

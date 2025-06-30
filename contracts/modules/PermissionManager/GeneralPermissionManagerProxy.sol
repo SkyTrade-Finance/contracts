@@ -24,7 +24,6 @@ contract GeneralPermissionManagerProxy is GeneralPermissionManagerStorage, Modul
         address _polyAddress,
         address _implementation
     )
-        public
         ModuleStorage(_securityToken, _polyAddress)
     {
         require(

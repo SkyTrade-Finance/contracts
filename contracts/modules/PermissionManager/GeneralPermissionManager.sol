@@ -17,7 +17,7 @@ contract GeneralPermissionManager is GeneralPermissionManagerStorage, IPermissio
     event AddDelegate(address indexed _delegate, bytes32 _details);
 
     /// @notice constructor
-    constructor(address _securityToken, address _polyToken) public Module(_securityToken, _polyToken) {
+    constructor(address _securityToken, address _polyToken) Module(_securityToken, _polyToken) {
 
     }
 

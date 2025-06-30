@@ -49,22 +49,19 @@ library Util {
      * @notice Changes the bytes32 into string
      * @param _source that need to convert into string
      */
-    function bytes32ToString(bytes32 _source) internal pure returns(string memory) {
-        bytes memory bytesString = new bytes(32);
-        uint charCount = 0;
-        uint j = 0;
-        for (j = 0; j < 32; j++) {
-            bytes1 char = bytes1(bytes32(uint(_source) * 2 ** (8 * j)));
-            if (char != 0) {
-                bytesString[charCount] = char;
-                charCount++;
-            }
+    function bytes32ToString(bytes32 _source) internal pure returns (string memory) {
+        // FIX: Overflow (panic code 0x11) - UPDATED AT 0.8.30
+        uint256 i = 0;
+        while (i < 32 && _source[i] != 0) {
+            i++;
         }
-        bytes memory bytesStringTrimmed = new bytes(charCount);
-        for (j = 0; j < charCount; j++) {
-            bytesStringTrimmed[j] = bytesString[j];
+
+        bytes memory result = new bytes(i);
+        for (uint256 j = 0; j < i; j++) {
+            result[j] = _source[j];
         }
-        return string(bytesStringTrimmed);
+
+        return string(result);
     }
 
     /**

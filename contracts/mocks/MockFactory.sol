@@ -22,7 +22,6 @@ contract MockFactory is DummySTOFactory {
         address _polymathRegistry,
         bool _isFeeInPoly
     )
-        public
         DummySTOFactory(_setupCost, _logicContract, _polymathRegistry, _isFeeInPoly)
     {
     }

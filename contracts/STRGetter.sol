@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT 
 pragma solidity 0.8.30;
 
 import "./storage/EternalStorage.sol";
@@ -160,11 +160,11 @@ contract STRGetter is EternalStorage {
     /**
      * @notice Returns the owner and timestamp for a given ticker
      * @param _ticker is the ticker symbol
-     *  address
-     *  uint256
-     *  uint256
-     *  string
-     *  bool
+     * @return address
+     * @return uint256
+     * @return uint256
+     * @return string
+     * @return bool
      */
     function getTickerDetails(string calldata _ticker) external view returns (address, uint256, uint256, string memory, bool) {
         string memory ticker = Util.upper(_ticker);
@@ -190,7 +190,7 @@ contract STRGetter is EternalStorage {
     /**
      * @notice Returns the security token address by ticker symbol
      * @param _ticker is the ticker of the security token
-     *  address
+     * @return address
      */
     function getSecurityTokenAddress(string calldata _ticker) external view returns (address) {
         string memory ticker = Util.upper(_ticker);
@@ -200,10 +200,10 @@ contract STRGetter is EternalStorage {
     /**
     * @notice Returns the security token data by address
     * @param _securityToken is the address of the security token.
-    *  string is the ticker of the security Token.
-    *  address is the issuer of the security Token.
-    *  string is the details of the security token.
-    *  uint256 is the timestamp at which security Token was deployed.
+    * @return string is the ticker of the security Token.
+    * @return address is the issuer of the security Token.
+    * @return string is the details of the security token.
+    * @return uint256 is the timestamp at which security Token was deployed.
     */
     function getSecurityTokenData(address _securityToken) external view returns (string memory, address, string memory, uint256) {
         return (
@@ -238,7 +238,7 @@ contract STRGetter is EternalStorage {
 
     /**
      * @notice Gets the fee currency
-     *  true = poly, false = usd
+     * @return true = poly, false = usd
      */
     function getIsFeeInPoly() public view returns(bool) {
         return getBoolValue(IS_FEE_IN_POLY);
@@ -246,7 +246,7 @@ contract STRGetter is EternalStorage {
 
     /**
      * @notice Gets the expiry limit
-     *  Expiry limit
+     * @return Expiry limit
      */
     function getExpiryLimit() public view returns(uint256) {
         return getUintValue(EXPIRYLIMIT);
@@ -255,7 +255,7 @@ contract STRGetter is EternalStorage {
     /**
      * @notice Gets the status of the ticker
      * @param _ticker Ticker whose status need to determine
-     *  bool
+     * @return bool
      */
     function getTickerStatus(string memory _ticker) public view returns(bool) {
         return getBoolValue(Encoder.getKey("registeredTickers_status", _ticker));
@@ -264,7 +264,7 @@ contract STRGetter is EternalStorage {
     /**
      * @notice Gets the owner of the ticker
      * @param _ticker Ticker whose owner need to determine
-     *  address Address of the owner
+     * @return address Address of the owner
      */
     function getTickerOwner(string memory _ticker) public view returns(address) {
         return getAddressValue(Encoder.getKey("registeredTickers_owner", _ticker));

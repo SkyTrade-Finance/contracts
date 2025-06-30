@@ -9,7 +9,7 @@ import "../tokens/SecurityTokenStorage.sol";
 import "../interfaces/ITransferManager.sol";
 import "../modules/UpgradableModuleFactory.sol";
 import "../modules/PermissionManager/IPermissionManager.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../libraries/token/ERC20/IERC20.sol";
 
 library TokenLib {
 

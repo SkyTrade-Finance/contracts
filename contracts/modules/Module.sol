@@ -8,8 +8,8 @@ import "../interfaces/IDataStore.sol";
 import "../interfaces/ISecurityToken.sol";
 import "../interfaces/ICheckPermission.sol";
 import "../storage/modules/ModuleStorage.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "../libraries/token/ERC20/IERC20.sol";
+import "../libraries/Ownable.sol";
 
 /**
  * @title Interface that any module contract should implement

@@ -20,8 +20,6 @@ contract FeatureRegistry is IFeatureRegistry, ReclaimTokens {
         return featureStatus[key];
     }
 
-    constructor(address intitialOwner) ReclaimTokens(intitialOwner) {}
-
     /**
      * @notice change a feature status
      * @dev feature status is set to false by default

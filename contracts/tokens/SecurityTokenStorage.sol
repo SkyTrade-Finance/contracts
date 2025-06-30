@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import "../interfaces/IDataStore.sol";
 import "../interfaces/IModuleRegistry.sol";
 import "../interfaces/IPolymathRegistry.sol";
 import "../interfaces/ISecurityTokenRegistry.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../libraries/token/ERC20/IERC20.sol";
 
 contract SecurityTokenStorage {
 
@@ -58,13 +57,14 @@ contract SecurityTokenStorage {
     }
 
     //Naming scheme to match Ownable
-    address internal owner_;
+    address internal _owner;
     address public tokenFactory;
     bool public initialized;
 
-    string internal name_;
-    string internal symbol_;
-    uint8 internal decimals_;
+    // ERC20 Details
+    string public name;
+    string public symbol;
+    uint8 public decimals;
 
     // Address of the controller which is a delegated entity
     // set by the issuer/owner of the token

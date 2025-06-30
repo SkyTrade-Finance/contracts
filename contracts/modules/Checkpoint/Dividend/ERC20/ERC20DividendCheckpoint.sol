@@ -4,8 +4,7 @@ pragma solidity 0.8.30;
 import "../DividendCheckpoint.sol";
 import "./ERC20DividendCheckpointStorage.sol";
 import "../../../../interfaces/IOwnable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import "../../../../libraries/token/ERC20/IERC20.sol";
 /**
  * @title Checkpoint module for issuing ERC20 dividends
  */
@@ -34,7 +33,7 @@ contract ERC20DividendCheckpoint is ERC20DividendCheckpointStorage, DividendChec
      * @notice Constructor
      * @param _securityToken Address of the security token
      */
-    constructor(address _securityToken, address _polyToken) public Module(_securityToken, _polyToken) {
+    constructor(address _securityToken, address _polyToken) Module(_securityToken, _polyToken) {
 
     }
 

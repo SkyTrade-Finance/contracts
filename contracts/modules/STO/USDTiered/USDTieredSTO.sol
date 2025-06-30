@@ -77,7 +77,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
     // STO Configuration //
     ///////////////////////
 
-    constructor(address _securityToken, address _polyAddress) public Module(_securityToken, _polyAddress) {
+    constructor(address _securityToken, address _polyAddress) Module(_securityToken, _polyAddress) {
 
     }
 
@@ -366,12 +366,21 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
     }
 
     function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken, bytes32[] calldata proof, uint64 expiry, bool isAccredited, ITradingRestrictionManager.InvestorClass investorClass) external returns (uint256, uint256, uint256) {
-        require (
-            ITradingRestrictionManager(restrictionManager).verifyInvestor(proof, _beneficiary, expiry, isAccredited, investorClass),
-            "Investor verification failed"
-        );
-        return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+        if (address(restrictionManager) == address(0)) {    
+            return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+        } else {
+            require (
+                ITradingRestrictionManager(restrictionManager).verifyInvestor(proof, _beneficiary, expiry, isAccredited, investorClass),
+                "Investor verification failed"
+            );
+            return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+        }
     }
+
+    // original function
+    // function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken) external returns (uint256, uint256, uint256) {
+    //     return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+    // }
 
     /**
       * @notice Purchase tokens using ETH

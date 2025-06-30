@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./libraries/Ownable.sol";
+import "./libraries/token/ERC20/IERC20.sol";
 
 /**
  * @title Utility contract to allow owner to retreive any ERC20 sent to the contract
  */
 abstract contract ReclaimTokens is Ownable {
-    constructor(address initialOwner) Ownable(initialOwner) {}
+    constructor() Ownable() {}
 
     /**
     * @notice Reclaim all ERC20Basic compatible tokens

@@ -28,7 +28,7 @@ contract EtherDividendCheckpoint is DividendCheckpoint {
      * @notice Constructor
      * @param _securityToken Address of the security token
      */
-    constructor(address _securityToken, address _polyToken) public Module(_securityToken, _polyToken) {
+    constructor(address _securityToken, address _polyToken) Module(_securityToken, _polyToken) {
 
     }
 

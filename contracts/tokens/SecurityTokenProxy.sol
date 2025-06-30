@@ -1,10 +1,8 @@
-// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import "../proxy/OwnedUpgradeabilityProxy.sol";
 import "./OZStorage.sol";
 import "./SecurityTokenStorage.sol";
-import "hardhat/console.sol";
 
 /**
  * @title USDTiered STO module Proxy
@@ -31,14 +29,13 @@ contract SecurityTokenProxy is OZStorage, SecurityTokenStorage, OwnedUpgradeabil
     {
         //Set storage variables - NB implementation not yet set
         require(_polymathRegistry != address(0), "Invalid Address");
-        name_ = _name;
-        symbol_ = _symbol;
-        decimals_ = _decimals;
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
         polymathRegistry = IPolymathRegistry(_polymathRegistry);
         tokenDetails = _tokenDetails;
         granularity = _granularity;
-        owner_ = msg.sender;
-        console.log(owner_, " is the owner of the SecurityTokenProxy");
+        _owner = msg.sender;
     }
 
 }

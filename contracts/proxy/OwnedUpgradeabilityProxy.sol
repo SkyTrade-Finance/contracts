@@ -2,7 +2,6 @@
 pragma solidity 0.8.30;
 
 import "./UpgradeabilityProxy.sol";
-import "hardhat/console.sol";
 
 /**
  * @title OwnedUpgradeabilityProxy
@@ -33,7 +32,7 @@ contract OwnedUpgradeabilityProxy is UpgradeabilityProxy {
     /**
     * @dev the constructor sets the original owner of the contract to the sender account.
     */
-    constructor() public {
+    constructor() {
         _setUpgradeabilityOwner(msg.sender);
     }
 

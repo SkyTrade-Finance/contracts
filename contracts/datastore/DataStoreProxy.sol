@@ -18,6 +18,7 @@ contract DataStoreProxy is DataStoreStorage, Proxy {
         address _securityToken,
         address _implementation
     )
+    public
     {
         require(_implementation != address(0) && _securityToken != address(0),
             "Address should not be 0x"

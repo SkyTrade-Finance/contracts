@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import "../Module.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../../libraries/token/ERC20/IERC20.sol";
 import "../../storage/modules/STO/STOStorage.sol";
 import "../../interfaces/ISTO.sol";
 
