@@ -66,7 +66,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     ) external returns (bool) {
         require(expiry > block.timestamp, "Investor proof has expired");
 
-        bytes32 firstHash = keccak256(abi.encode(investor, expiry, isAccredited));
+        bytes32 firstHash = keccak256(abi.encode(investor, expiry, isAccredited, investorClass));
         bytes32 leaf = keccak256(abi.encode(firstHash));
 
         require(MerkleProof.verify(proof, _root, leaf), "Invalid proof");
