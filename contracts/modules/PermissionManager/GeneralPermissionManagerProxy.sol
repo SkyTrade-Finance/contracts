@@ -1,8 +1,9 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../../proxy/OwnedUpgradeabilityProxy.sol";
 import "../../Pausable.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../storage/modules/ModuleStorage.sol";
 import "./GeneralPermissionManagerStorage.sol";
 
@@ -23,7 +24,6 @@ contract GeneralPermissionManagerProxy is GeneralPermissionManagerStorage, Modul
         address _polyAddress,
         address _implementation
     )
-        public
         ModuleStorage(_securityToken, _polyAddress)
     {
         require(

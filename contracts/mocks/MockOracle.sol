@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT 
+pragma solidity 0.8.30;
 
 import "../interfaces/IOracle.sol";
 
@@ -8,7 +9,7 @@ contract MockOracle is IOracle {
     bytes32 public denominatedCurrency;
     uint256 public price;
 
-    constructor(address _currency, bytes32 _currencySymbol, bytes32 _denominatedCurrency, uint256 _price) public {
+    constructor(address _currency, bytes32 _currencySymbol, bytes32 _denominatedCurrency, uint256 _price) {
         currency = _currency;
         currencySymbol = _currencySymbol;
         denominatedCurrency = _denominatedCurrency;

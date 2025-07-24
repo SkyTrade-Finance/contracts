@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Interface to be implemented by all permission manager modules
@@ -39,7 +40,6 @@ interface IPermissionManager {
     * @param _module Ethereum contract address of the module
     * @param _perm Permission flag
     * @param _valid Bool flag use to switch on/off the permission
-    * @return bool
     */
     function changePermission(address _delegate, address _module, bytes32 _perm, bool _valid) external;
 
@@ -49,7 +49,6 @@ interface IPermissionManager {
     * @param _modules Multiple module matching the multiperms, needs to be same length
     * @param _perms Multiple permission flag needs to be changed
     * @param _valids Bool array consist the flag to switch on/off the permission
-    * @return nothing
     */
     function changePermissionMulti(
         address _delegate,

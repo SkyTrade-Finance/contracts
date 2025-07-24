@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../tokens/STGetter.sol";
 
@@ -13,7 +14,6 @@ import "../tokens/STGetter.sol";
  * @notice - https://github.com/ethereum/solidity/issues/4847
  */
 contract MockSTGetter is STGetter {
-    using SafeMath for uint256;
 
     event UpgradeEvent(uint256 _upgrade);
 

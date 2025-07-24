@@ -1,21 +1,40 @@
 import { HardhatUserConfig } from "hardhat/config";
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-verify";
+
 
 const dotenvResult = dotenv.config();
 if (dotenvResult.error) {
   throw dotenvResult.error;
 }
 
-const {
-  PROVIDER_URL,
-  OWNER_PRIVATE_KEY,
-  ETHERSCAN_API_KEY,
-} = process.env;
-
+const { PROVIDER_URL, OWNER_PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
 const accounts = [...(OWNER_PRIVATE_KEY ? [OWNER_PRIVATE_KEY] : [])];
 
 const config: HardhatUserConfig = {
+  mocha: {
+    timeout: 900000,
+  },
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.30",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+            details: { yul: false },
+          },
+          viaIR: true,
+          metadata: {
+            bytecodeHash: "none", // disable ipfs
+            useLiteralContent: true, // use source code
+          },
+        },
+      },
+    ],
+  },
   networks: {
     local: {
       url: PROVIDER_URL,
@@ -26,64 +45,34 @@ const config: HardhatUserConfig = {
     },
     localhost: {
       chainId: 1337,
-      url: 'http://localhost:8545',
+      url: "http://localhost:8545",
     },
-    goerli: {
-      url: PROVIDER_URL,
-      accounts,
-      chainId: 5,
-    },
-    bscTestnet: {
-      url: PROVIDER_URL,
-      accounts,
-      chainId: 97,
-      timeout: 60 * 60 * 1000 // 1 hour
-    },
-    baseSepoliaTestnet: {
+    baseSepolia: {
       url: PROVIDER_URL,
       accounts,
       chainId: 84532,
-      timeout: 60 * 60 * 1000 // 1 hour
+      timeout: 60 * 60 * 1000, // 1 hour
     },
-    baseMainnet: {
+    monadTestnet: {
       url: PROVIDER_URL,
       accounts,
-      chainId: 8453,
-      timeout: 60 * 60 * 1000 // 1 hour
+      chainId: 10143,
+      timeout: 60 * 60 * 1000, // 1 hour
     },
-    plume: {
-      url: "https://phoenix-rpc.plumenetwork.xyz",
-      chainId: 98866,
+    bnbMainnet: {
+      url: PROVIDER_URL,
       accounts,
-    }
-  }, 
-  solidity: {
-    version: '0.5.8',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
-      },
+      chainId: 56,
+      timeout: 60 * 60 * 1000, // 1 hour
     },
   },
-  // etherscan: {
-  //   apiKey: ETHERSCAN_API_KEY
-  // },
+  sourcify: {
+    enabled: true,
+    apiUrl: "https://sourcify-api-monad.blockvision.org",
+    browserUrl: "https://testnet.monadexplorer.com"
+  },
   etherscan: {
-    apiKey: {
-      "plume": "test"
-    },
-    customChains: [
-      {
-        network: "plume",
-        chainId: 98866,
-        urls: {
-          apiURL: "https://phoenix-explorer.plumenetwork.xyz/api\?",
-          browserURL: "https://phoenix-explorer.plumenetwork.xyz"
-        }
-      }
-    ]
+    enabled: false
   }
 };
-
 export default config;

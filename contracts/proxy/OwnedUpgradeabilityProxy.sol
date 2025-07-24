@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./UpgradeabilityProxy.sol";
 
@@ -31,13 +32,13 @@ contract OwnedUpgradeabilityProxy is UpgradeabilityProxy {
     /**
     * @dev the constructor sets the original owner of the contract to the sender account.
     */
-    constructor() public {
+    constructor() {
         _setUpgradeabilityOwner(msg.sender);
     }
 
     /**
     * @dev Tells the address of the owner
-    * @return the address of the owner
+    *  the address of the owner
     */
     function _upgradeabilityOwner() internal view returns(address) {
         return __upgradeabilityOwner;
@@ -54,13 +55,13 @@ contract OwnedUpgradeabilityProxy is UpgradeabilityProxy {
     /**
     * @notice Internal function to provide the address of the implementation contract
     */
-    function _implementation() internal view returns(address) {
+    function _implementation() internal override view returns(address) {
         return __implementation;
     }
 
     /**
     * @dev Tells the address of the proxy owner
-    * @return the address of the proxy owner
+    *  the address of the proxy owner
     */
     function proxyOwner() external ifOwner returns(address) {
         return _upgradeabilityOwner();
@@ -68,7 +69,7 @@ contract OwnedUpgradeabilityProxy is UpgradeabilityProxy {
 
     /**
     * @dev Tells the version name of the current implementation
-    * @return string representing the name of the current version
+    *  string representing the name of the current version
     */
     function version() external ifOwner returns(string memory) {
         return __version;
@@ -76,7 +77,7 @@ contract OwnedUpgradeabilityProxy is UpgradeabilityProxy {
 
     /**
     * @dev Tells the address of the current implementation
-    * @return address of the current implementation
+    *  address of the current implementation
     */
     function implementation() external ifOwner returns(address) {
         return _implementation();
@@ -117,8 +118,13 @@ contract OwnedUpgradeabilityProxy is UpgradeabilityProxy {
         _upgradeTo(_newVersion, _newImplementation);
         bool success;
         /*solium-disable-next-line security/no-call-value*/
-        (success, ) = address(this).call.value(msg.value)(_data);
+        (success, ) = address(this).call{value: msg.value}(_data);
         require(success, "Fail in executing the function of implementation contract");
     }
+
+    /**
+    * @dev Receives Ether.
+    */
+    receive() external payable {}
 
 }

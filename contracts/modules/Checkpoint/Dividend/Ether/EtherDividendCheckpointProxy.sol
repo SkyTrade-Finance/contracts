@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../../../../proxy/OwnedUpgradeabilityProxy.sol";
 import "../../../../storage/modules/Checkpoint/Dividend/DividendCheckpointStorage.sol";
@@ -21,7 +22,6 @@ contract EtherDividendCheckpointProxy is DividendCheckpointStorage, ModuleStorag
         address _polyAddress,
         address _implementation
     )
-        public
         ModuleStorage(_securityToken, _polyAddress)
     {
         require(_implementation != address(0), "Implementation address should not be 0x");

@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../tokens/SecurityToken.sol";
 
@@ -59,6 +60,7 @@ contract MockSecurityTokenLogic is SecurityToken {
         bool /* _archived */
     )
         public
+        override
     {
         emit UpgradeEvent(0);
     }

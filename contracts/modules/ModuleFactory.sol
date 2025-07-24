@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../libraries/VersionUtils.sol";
 import "../libraries/Util.sol";
@@ -6,15 +7,15 @@ import "../interfaces/IModule.sol";
 import "../interfaces/IOracle.sol";
 import "../interfaces/IPolymathRegistry.sol";
 import "../interfaces/IModuleFactory.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "../libraries/token/ERC20/IERC20.sol";
+import "../libraries/Ownable.sol";
 import "../libraries/DecimalMath.sol";
 
 /**
  * @title Interface that any module factory contract should implement
  * @notice Contract is abstract
  */
-contract ModuleFactory is IModuleFactory, Ownable {
+abstract contract ModuleFactory is IModuleFactory, Ownable {
 
     IPolymathRegistry public polymathRegistry;
 
@@ -41,7 +42,7 @@ contract ModuleFactory is IModuleFactory, Ownable {
     /**
      * @notice Constructor
      */
-    constructor(uint256 _setupCost, address _polymathRegistry, bool _isCostInPoly) public {
+    constructor(uint256 _setupCost, address _polymathRegistry, bool _isCostInPoly) {
         setupCost = _setupCost;
         polymathRegistry = IPolymathRegistry(_polymathRegistry);
         isCostInPoly = _isCostInPoly;
@@ -50,21 +51,21 @@ contract ModuleFactory is IModuleFactory, Ownable {
     /**
      * @notice Type of the Module factory
      */
-    function getTypes() external view returns(uint8[] memory) {
+    function getTypes() external view virtual returns(uint8[] memory) {
         return typesData;
     }
 
     /**
      * @notice Get the tags related to the module factory
      */
-    function getTags() external view returns(bytes32[] memory) {
+    function getTags() external view virtual returns(bytes32[] memory) {
         return tagsData;
     }
 
     /**
      * @notice Get the version related to the module factory
      */
-    function version() external view returns(string memory) {
+    function version() external virtual view returns(string memory) {
         return initialVersion;
     }
 
@@ -152,7 +153,7 @@ contract ModuleFactory is IModuleFactory, Ownable {
 
     /**
      * @notice Used to get the lower bound
-     * @return lower bound
+     *  lower bound
      */
     function getLowerSTVersionBounds() external view returns(uint8[] memory) {
         return VersionUtils.unpack(compatibleSTVersionRange["lowerBound"]);
@@ -160,7 +161,7 @@ contract ModuleFactory is IModuleFactory, Ownable {
 
     /**
      * @notice Used to get the upper bound
-     * @return upper bound
+     *  upper bound
      */
     function getUpperSTVersionBounds() external view returns(uint8[] memory) {
         return VersionUtils.unpack(compatibleSTVersionRange["upperBound"]);
@@ -172,7 +173,7 @@ contract ModuleFactory is IModuleFactory, Ownable {
     function setupCostInPoly() public returns (uint256) {
         if (isCostInPoly)
             return setupCost;
-        uint256 polyRate = IOracle(polymathRegistry.getAddress(POLY_ORACLE)).getPrice();
+        uint256 polyRate = IOracle(polymathRegistry.addressGetter(POLY_ORACLE)).getPrice();
         return DecimalMath.div(setupCost, polyRate);
     }
 
@@ -181,7 +182,7 @@ contract ModuleFactory is IModuleFactory, Ownable {
      */
     function _takeFee() internal returns(uint256) {
         uint256 polySetupCost = setupCostInPoly();
-        address polyToken = polymathRegistry.getAddress("PolyToken");
+        address polyToken = polymathRegistry.addressGetter("PolyToken");
         if (polySetupCost > 0) {
             require(IERC20(polyToken).transferFrom(msg.sender, owner(), polySetupCost), "Insufficient allowance for module fee");
         }
@@ -193,7 +194,7 @@ contract ModuleFactory is IModuleFactory, Ownable {
      * @param _module Address of module
      * @param _data Data used for the intialization of the module factory variables
      */
-    function _initializeModule(address _module, bytes memory _data) internal {
+    function _initializeModule(address _module, bytes memory _data) virtual internal {
         uint256 polySetupCost = _takeFee();
         bytes4 initFunction = IModule(_module).getInitFunction();
         if (initFunction != bytes4(0)) {

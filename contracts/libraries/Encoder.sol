@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 library Encoder {
     function getKey(string memory _key) internal pure returns(bytes32) {

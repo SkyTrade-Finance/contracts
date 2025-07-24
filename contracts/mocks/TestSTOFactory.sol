@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./Dummy/DummySTOFactory.sol";
 
@@ -15,7 +16,6 @@ contract TestSTOFactory is DummySTOFactory {
         address _polymathRegistry,
         bool _isFeeInPoly
     )
-        public
         DummySTOFactory(_setupCost, _logicContract, _polymathRegistry, _isFeeInPoly)
     {
         name = "TestSTO";
@@ -28,7 +28,7 @@ contract TestSTOFactory is DummySTOFactory {
     /**
      * @notice Gets the tags related to the module factory
      */
-    function getTags() external view returns(bytes32[] memory) {
+    function getTags() external view override returns(bytes32[] memory) {
         bytes32[] memory availableTags = new bytes32[](4);
         availableTags[0] = "Test";
         availableTags[1] = "Non-refundable";

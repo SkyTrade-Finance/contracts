@@ -1,4 +1,4 @@
-pragma solidity 0.5.8;
+pragma solidity 0.8.30;
 
 import "../proxy/OwnedUpgradeabilityProxy.sol";
 import "./OZStorage.sol";
@@ -26,7 +26,6 @@ contract SecurityTokenProxy is OZStorage, SecurityTokenStorage, OwnedUpgradeabil
         string memory _tokenDetails,
         address _polymathRegistry
     )
-        public
     {
         //Set storage variables - NB implementation not yet set
         require(_polymathRegistry != address(0), "Invalid Address");

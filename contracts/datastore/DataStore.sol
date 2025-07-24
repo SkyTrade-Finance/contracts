@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../interfaces/ISecurityToken.sol";
 import "../interfaces/IOwnable.sol";
@@ -400,24 +401,24 @@ contract DataStore is DataStoreStorage, IDataStore {
     function _deleteUint(bytes32 _key, uint256 _index) internal validKey(_key) {
         require(uintArrayData[_key].length > _index, "Invalid Index"); //Also prevents undeflow
         uintArrayData[_key][_index] = uintArrayData[_key][uintArrayData[_key].length - 1];
-        uintArrayData[_key].length--;
+        uintArrayData[_key].pop();
     }
 
     function _deleteBytes32(bytes32 _key, uint256 _index) internal validKey(_key) {
         require(bytes32ArrayData[_key].length > _index, "Invalid Index"); //Also prevents undeflow
         bytes32ArrayData[_key][_index] = bytes32ArrayData[_key][bytes32ArrayData[_key].length - 1];
-        bytes32ArrayData[_key].length--;
+        bytes32ArrayData[_key].pop();
     }
 
     function _deleteAddress(bytes32 _key, uint256 _index) internal validKey(_key) {
         require(addressArrayData[_key].length > _index, "Invalid Index"); //Also prevents undeflow
         addressArrayData[_key][_index] = addressArrayData[_key][addressArrayData[_key].length - 1];
-        addressArrayData[_key].length--;
+        addressArrayData[_key].pop();
     }
 
     function _deleteBool(bytes32 _key, uint256 _index) internal validKey(_key) {
         require(boolArrayData[_key].length > _index, "Invalid Index"); //Also prevents undeflow
         boolArrayData[_key][_index] = boolArrayData[_key][boolArrayData[_key].length - 1];
-        boolArrayData[_key].length--;
+        boolArrayData[_key].pop();
     }
 }
