@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT 
+pragma solidity 0.8.30;
 
 import "./storage/EternalStorage.sol";
 import "./interfaces/ISecurityToken.sol";
@@ -44,7 +45,7 @@ contract STRGetter is EternalStorage {
     function _ownerInTicker(bytes32 _ticker) internal view returns (bool) {
         string memory ticker = Util.bytes32ToString(_ticker);
         /*solium-disable-next-line security/no-block-members*/
-        if (getUintValue(Encoder.getKey("registeredTickers_expiryDate", ticker)) >= now || getBoolValue(Encoder.getKey("registeredTickers_status", ticker))) {
+        if (getUintValue(Encoder.getKey("registeredTickers_expiryDate", ticker)) >= block.timestamp || getBoolValue(Encoder.getKey("registeredTickers_status", ticker))) {
             return true;
         }
         return false;
@@ -170,7 +171,7 @@ contract STRGetter is EternalStorage {
         bool tickerStatus = getTickerStatus(ticker);
         uint256 expiryDate = getUintValue(Encoder.getKey("registeredTickers_expiryDate", ticker));
         /*solium-disable-next-line security/no-block-members*/
-        if ((tickerStatus == true) || (expiryDate > now)) {
+        if ((tickerStatus == true) || (expiryDate > block.timestamp)) {
             address stAddress = getAddressValue(Encoder.getKey("tickerToSecurityToken", ticker));
             string memory tokenName = stAddress == address(0) ? "" : ISecurityToken(stAddress).name();
             return

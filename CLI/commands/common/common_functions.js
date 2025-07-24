@@ -11,6 +11,10 @@ async function addModule (securityToken, polyToken, factoryAddress, moduleABI, g
   moduleFactory.setProvider(web3.currentProvider);
 
   const moduleName = web3.utils.hexToUtf8(await moduleFactory.methods.name().call());
+  const setupCostAction = await moduleFactory.methods.changeSetupCost(0)
+
+  await this.sendTransaction(setupCostAction, { factor: 2 });
+
   const moduleFee = new web3.utils.BN(await moduleFactory.methods.setupCostInPoly().call());
   let transferAmount = new web3.utils.BN(0);
   if (moduleFee.gt(new web3.utils.BN(0))) {
@@ -40,7 +44,7 @@ async function addModule (securityToken, polyToken, factoryAddress, moduleABI, g
     let transferEvent = this.getEventFromLogs(polyToken._jsonInterface, transferReceipt.logs, 'Transfer');
     console.log(`Number of POLY sent: ${web3.utils.fromWei(new web3.utils.BN(transferEvent.value))}`);
   }
-  let addModuleAction = securityToken.methods.addModuleWithLabel(factoryAddress, bytes, moduleFee, 0, moduleLabel, addModuleArchived);
+  let addModuleAction = securityToken.methods.addModuleWithLabel(factoryAddress, bytes, 0, 0, moduleLabel, addModuleArchived);
   let receipt = await this.sendTransaction(addModuleAction);
   let event = this.getEventFromLogs(securityToken._jsonInterface, receipt.logs, 'ModuleAdded');
   console.log(`${moduleName} deployed at address: ${event._module}`);
@@ -158,10 +162,16 @@ function getFinalOptions(options) {
 };
 
 async function getGasLimit(options, action) {
-  let block = await web3.eth.getBlock('latest');
-  let networkGasLimit = block.gasLimit;
-  let gas = Math.round(options.factor * (await action.estimateGas({ from: options.from.address, value: options.value })));
-  return (gas > networkGasLimit) ? networkGasLimit : gas;
+  try {
+    let block = await web3.eth.getBlock('latest');
+    let networkGasLimit = block.gasLimit;
+    let gas = Math.round(options.factor * (await action.estimateGas({ from: options.from.address, value: options.value })));
+    return (gas > networkGasLimit) ? networkGasLimit : gas;
+  } catch (error) {
+    console.error('Error getting transaction count:', error);
+
+    return 7900000;
+  }
 }
 
 async function checkPermissions(action) {
@@ -224,15 +234,34 @@ async function selectToken(securityTokenRegistry, tokenSymbol) {
   return securityToken;
 }
 
+let newNonce = 0;
+
+async function getTransactionCount(address) {
+  try {
+    const count = await web3.eth.getTransactionCount(address);
+
+    newNonce = count
+    
+    console.log(`Transaction count for ${address}: ${count}`);
+    return count;
+
+  } catch (error) {
+    console.error('Error getting transaction count:', error);
+
+    return newNonce + 1;
+  }
+}
+
 async function sendTransaction(action, options) {
   await checkPermissions(action);
 
   options = getFinalOptions(options);
   let gasLimit = await getGasLimit(options, action);
+  // let gasLimit = 9900000;
 
   console.log(chalk.black.bgYellowBright(`---- Transaction executed: ${action._method.name} - Gas limit provided: ${gasLimit} ----`));
 
-  let nonce = await web3.eth.getTransactionCount(options.from.address);
+  let nonce = await getTransactionCount(options.from.address);
   if (nonce < options.minNonce) {
     nonce = minNonce;
   }

@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 interface IERC1410 {
 
@@ -9,7 +10,7 @@ interface IERC1410 {
     // Token Transfers
     function transferByPartition(bytes32 _partition, address _to, uint256 _value, bytes calldata _data) external returns (bytes32);
     function operatorTransferByPartition(bytes32 _partition, address _from, address _to, uint256 _value, bytes calldata _data, bytes calldata _operatorData) external returns (bytes32);
-    function canTransferByPartition(address _from, address _to, bytes32 _partition, uint256 _value, bytes calldata _data) external view returns (byte, bytes32, bytes32);
+    function canTransferByPartition(address _from, address _to, bytes32 _partition, uint256 _value, bytes calldata _data) external view returns (bytes1, bytes32, bytes32);
 
     // Operator Information
     // These functions are present in the STGetter

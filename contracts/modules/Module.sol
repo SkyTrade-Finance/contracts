@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../interfaces/IModule.sol";
 import "../Pausable.sol";
@@ -7,19 +8,19 @@ import "../interfaces/IDataStore.sol";
 import "../interfaces/ISecurityToken.sol";
 import "../interfaces/ICheckPermission.sol";
 import "../storage/modules/ModuleStorage.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../libraries/token/ERC20/IERC20.sol";
+import "../libraries/Ownable.sol";
 
 /**
  * @title Interface that any module contract should implement
  * @notice Contract is abstract
  */
-contract Module is IModule, ModuleStorage, Pausable {
+abstract contract Module is IModule, ModuleStorage, Pausable {
     /**
      * @notice Constructor
      * @param _securityToken Address of the security token
      */
-    constructor (address _securityToken, address _polyAddress) public
+    constructor (address _securityToken, address _polyAddress)
     ModuleStorage(_securityToken, _polyAddress)
     {
     }
@@ -48,7 +49,7 @@ contract Module is IModule, ModuleStorage, Pausable {
     /**
      * @notice Pause (overridden function)
      */
-    function pause() public {
+    function pause() virtual public {
         _onlySecurityTokenOwner();
         super._pause();
     }
@@ -87,6 +88,17 @@ contract Module is IModule, ModuleStorage, Pausable {
     */
     function reclaimETH() external {
         _onlySecurityTokenOwner();
-        msg.sender.transfer(address(this).balance);
+        payable(msg.sender).transfer(address(this).balance);
+    }
+
+
+    /**
+     * @notice Sets the address of the trading restriction (KYC) manager contract
+     * @param _restrictionManager Address of the Trading Restriction Manager contract
+     */
+    function setTradingRestrictionManager(address _restrictionManager) external {
+        _onlySecurityTokenOwner();
+        restrictionManager = ITradingRestrictionManager(_restrictionManager);
+        emit TradingRestrictionManagerUpdated(_restrictionManager);
     }
 }

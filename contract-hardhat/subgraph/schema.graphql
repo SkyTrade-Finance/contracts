@@ -1,0 +1,191 @@
+type MerkleRoot @entity(immutable: false) {
+  id: ID!
+  root: Bytes!
+  creator: Bytes!
+  timestamp: BigInt!
+}
+
+type USDTieredSTOFactory @entity(immutable: false) {
+  id: ID!
+  module: Bytes!
+  moduleName: Bytes!
+  moduleFactory: Bytes!
+  creator: Bytes!
+  setupCost: BigInt!
+  setupCostInPoly: BigInt!
+  timestamp: BigInt!
+  from: Bytes!
+}
+
+type ERC20DividendCheckpointFactory @entity(immutable: false) {
+  id: ID!
+  module: Bytes!
+  moduleName: Bytes!
+  moduleFactory: Bytes!
+  creator: Bytes!
+  setupCost: BigInt!
+  setupCostInPoly: BigInt!
+  timestamp: BigInt!
+  from: Bytes!
+}
+
+type GeneralTransferManagerFactory @entity(immutable: false) {
+  id: ID!
+  module: Bytes!
+  moduleName: Bytes!
+  moduleFactory: Bytes!
+  creator: Bytes!
+  setupCost: BigInt!
+  setupCostInPoly: BigInt!
+  timestamp: BigInt!
+  from: Bytes!
+}
+
+type SecurityTokenFactory @entity(immutable: false) {
+  id: ID!
+  version: String! # string
+  upgrade: BigInt! # uint256
+  logicContract: Bytes! # address
+  initializationData: Bytes! # bytes
+  upgradeData: Bytes! # bytes
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type SecurityToken @entity(immutable: false) {
+  id: ID!
+  ticker: String!
+  name: String!
+  securityTokenAddress: Bytes!
+  owner: Bytes!
+  addedAt: BigInt!
+  registrant: Bytes!
+  fromAdmin: Boolean!
+  usdFee: BigInt!
+  polyFee: BigInt!
+  protocolVersion: BigInt!
+  transfers: [Transfer!]! @derivedFrom(field: "token")
+  dividends: [ERC20DividendDeposited!]! @derivedFrom(field: "token")
+  claimedDividends: [ERC20DividendClaimed!]! @derivedFrom(field: "token")
+  userDividends: [UserDividend!]! @derivedFrom(field: "token")
+}
+
+type Transfer @entity(immutable: true) {
+  id: ID!
+  token: SecurityToken!
+  from: Account!
+  to: Account!
+  value: BigInt!
+  transactionHash: Bytes!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+type Account @entity(immutable: false) {
+  id: ID! # Address of the user
+  tokenBalances: [TokenBalance!]! @derivedFrom(field: "user")
+  claimedDividends: [ERC20DividendClaimed!]! @derivedFrom(field: "payee")
+  checkpointBalances: [CheckpointBalance!]! @derivedFrom(field: "user")
+  userDividends: [UserDividend!]! @derivedFrom(field: "user")
+}
+
+type AccountUser @entity(immutable: false) {
+  id: ID! # Address of the user
+  user: [String!]! # Address of the user
+}
+
+type UserDividend @entity(immutable: false) {
+  id: ID!
+  user: Account!
+  claim: BigInt! 
+  creationUnixTimestamp: BigInt! 
+  totalClaimableAmount: BigInt!
+  transactionHash: Bytes! 
+  withheld: BigInt!
+  token: SecurityToken!
+}
+
+type TokenBalance @entity(immutable: false) {
+  id: ID! # Unique (userAddress-tokenAddress)
+  user: Account!
+  token: SecurityToken!
+  balance: BigInt! # Current balance of the user for this token
+  checkpointBalances: [CheckpointBalance!]! @derivedFrom(field: "tokenBalance")
+  dividendAmount: BigInt! # Total dividends earned per token
+}
+
+type CheckpointBalance @entity(immutable: false) {
+  id: ID!
+  tokenBalance: TokenBalance!
+  user: Account!
+  balance: BigInt! # Balance at the checkpoint
+  currentCheckpoint: BigInt! # Dividend earned at the checkpoint
+  timestamp: BigInt!
+  blockNumber: BigInt!
+}
+
+type Aggregate @entity(immutable: false) {
+  id: ID!
+  currentCheckpoint: BigInt!
+  currentDividendId: BigInt!
+}
+
+type ERC20DividendClaimed @entity(immutable: false) {
+  id: ID!
+  payee: Account!
+  dividendIndex: BigInt!
+  paymentToken: Bytes!
+  token: SecurityToken!
+  amount: BigInt!
+  withheld: BigInt!
+  contractAddress: Bytes!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type TokenPurchase @entity(immutable: false) {
+  id: ID!
+  contractAddress: Bytes!
+  purchaser: Bytes!
+  beneficiary: Bytes!
+  tokens: BigInt!
+  usdAmount: BigInt!
+  tierPrice: BigInt!
+  tier: BigInt!
+  timestamp: BigInt!
+}
+
+type ERC20DividendDeposited @entity(immutable: false) {
+  id: ID!
+  depositor: Bytes!
+  checkpointId: BigInt!
+  maturity: BigInt!
+  expiry: BigInt!
+  amount: BigInt!
+  totalSupply: BigInt!
+  dividendIndex: BigInt!
+  name: Bytes!
+  contractAddress: Bytes!
+  timestamp: BigInt!
+  paymentToken: Bytes!
+  token: SecurityToken!
+}
+
+type EpnsNotificationCounter @entity(immutable: false) {
+  id: ID!
+  totalCount: BigInt!
+}
+
+type EpnsPushNotification @entity(immutable: false) {
+  id: ID!
+  notificationNumber: BigInt!
+  recipient: String!
+  notification: String!
+}
+
+type STOState @entity(immutable: false) {
+  id: ID!
+  tokensSold: BigInt!
+  finalized: Boolean!
+}

@@ -29,3 +29,31 @@ extract.zip
 .env
 yarn-error.log
 polymath-developer-portal
+
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+artifacts
+
+
+contract-hardhat/node_modules
+contract-hardhat/.env
+contract-hardhat/coverage
+contract-hardhat/coverage.json
+contract-hardhat/typechain
+contract-hardhat/typechain-types
+contract-hardhat/generated
+contract-hardhat/build
+contract-hardhat/subgraph/build
+
+# Hardhat files
+contract-hardhat/cache
+contract-hardhat/artifacts
+
+

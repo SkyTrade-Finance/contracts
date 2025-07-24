@@ -1,10 +1,11 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Holds the storage variable for the DividendCheckpoint modules (i.e ERC20, Ether)
  * @dev abstract contract
  */
-contract DividendCheckpointStorage {
+abstract contract DividendCheckpointStorage {
 
     // Address to which reclaimed dividends and withholding tax is sent
     address payable public wallet;

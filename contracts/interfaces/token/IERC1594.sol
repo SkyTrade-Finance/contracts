@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Standard Interface of ERC1594
@@ -19,8 +20,8 @@ interface IERC1594 {
     function redeemFrom(address _tokenHolder, uint256 _value, bytes calldata _data) external;
 
     // Transfer Validity
-    function canTransfer(address _to, uint256 _value, bytes calldata _data) external view returns (byte, bytes32);
-    function canTransferFrom(address _from, address _to, uint256 _value, bytes calldata _data) external view returns (byte, bytes32);
+    function canTransfer(address _to, uint256 _value, bytes calldata _data) external view returns (bytes1, bytes32);
+    function canTransferFrom(address _from, address _to, uint256 _value, bytes calldata _data) external view returns (bytes1, bytes32);
 
     // Issuance / Redemption Events
     event Issued(address indexed _operator, address indexed _to, uint256 _value, bytes _data);

@@ -1,17 +1,16 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../TransferManager.sol";
 import "../../../libraries/Encoder.sol";
 import "../../../libraries/VersionUtils.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./GeneralTransferManagerStorage.sol";
 
 /**
  * @title Transfer Manager module for core transfer validation functionality
  */
 contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManager {
-    using SafeMath for uint256;
     using ECDSA for bytes32;
 
     // Emit when Issuance address get changed
@@ -52,7 +51,6 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
      * @param _securityToken Address of the security token
      */
     constructor(address _securityToken, address _polyToken)
-    public
     Module(_securityToken, _polyToken)
     {
 
@@ -432,7 +430,7 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
         returns(bool)
     {
         /*solium-disable-next-line security/no-block-members*/
-        if(_validFrom > now || _validTo < now || _investor == address(0))
+        if(_validFrom > block.timestamp || _validTo < block.timestamp || _investor == address(0))
             return false;
         bytes32 hash = keccak256(
             abi.encodePacked(this, _investor, _canSendAfter, _canReceiveAfter, _expiryTime, _validFrom, _validTo, _nonce)
@@ -500,7 +498,7 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
             return false;
         }
 
-        if (_validFrom > now || _validTo < now) {
+        if (_validFrom > block.timestamp || _validTo < block.timestamp) {
             return false;
         }
 
@@ -527,7 +525,8 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
     function _checkSig(bytes32 _hash, bytes memory _signature, uint256 _nonce) internal returns(bool) {
         //Check that the signature is valid
         //sig should be signing - _investor, _canSendAfter, _canReceiveAfter & _expiryTime and be signed by the issuer address
-        address signer = _hash.toEthSignedMessageHash().recover(_signature);
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash));
+        address signer = ECDSA.recover(ethSignedMessageHash, _signature);
         if (nonceMap[signer][_nonce] || !_checkPerm(OPERATOR, signer)) {
             return false;
         }
@@ -540,7 +539,7 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
      * @param _expiryTime Expiry time of the investor
      */
     function _validExpiry(uint64 _expiryTime) internal view returns(bool valid) {
-        if (_expiryTime >= uint64(now)) /*solium-disable-line security/no-block-members*/
+        if (_expiryTime >= uint64(block.timestamp)) /*solium-disable-line security/no-block-members*/
             valid = true;
     }
 
@@ -549,7 +548,7 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
      * @param _lockTime Lock time of the investor
      */
     function _validLockTime(uint64 _lockTime) internal view returns(bool valid) {
-        if (_lockTime <= uint64(now)) /*solium-disable-line security/no-block-members*/
+        if (_lockTime <= uint64(block.timestamp)) /*solium-disable-line security/no-block-members*/
             valid = true;
     }
 
@@ -577,14 +576,23 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
         uint8 added
     )
     {
-        uint256 data = dataStore.getUint256(_getKey(WHITELIST, _investor));
-        (canSendAfter, canReceiveAfter, expiryTime, added)  = VersionUtils.unpackKYC(data);
+        if (address(restrictionManager) == address(0)) {
+            uint256 data = dataStore.getUint256(_getKey(WHITELIST, _investor));
+            (canSendAfter, canReceiveAfter, expiryTime, added)  = VersionUtils.unpackKYC(data);
+        } else {
+            (canSendAfter, canReceiveAfter, expiryTime, added) = restrictionManager.getInvestorKYCData(_investor, address(securityToken));
+        }
     }
 
     function _isExistingInvestor(address _investor, IDataStore dataStore) internal view returns(bool) {
-        uint256 data = dataStore.getUint256(_getKey(WHITELIST, _investor));
-        //extracts `added` from packed `_whitelistData`
-        return uint8(data) == 0 ? false : true;
+        if (address(restrictionManager) == address(0)) {
+            uint256 data = dataStore.getUint256(_getKey(WHITELIST, _investor));
+            //extracts `added` from packed `_whitelistData`
+            return uint8(data) == 0 ? false : true;
+        } else {
+            return restrictionManager.isExistingInvestor(_investor);
+        }
+
     }
 
     function _getValuesForTransfer(address _from, address _to) internal view returns(uint64 canSendAfter, uint64 fromExpiry, uint64 canReceiveAfter, uint64 toExpiry) {
@@ -685,20 +693,20 @@ contract GeneralTransferManager is GeneralTransferManagerStorage, TransferManage
      * @param _tokenHolder Whom token amount need to query
      * @param _additionalBalance It is the `_value` that transfer during transfer/transferFrom function call
      */
-    function getTokensByPartition(bytes32 _partition, address _tokenHolder, uint256 _additionalBalance) external view returns(uint256) {
-        uint256 currentBalance = (msg.sender == address(securityToken)) ? (securityToken.balanceOf(_tokenHolder)).add(_additionalBalance) : securityToken.balanceOf(_tokenHolder);
+    function getTokensByPartition(bytes32 _partition, address _tokenHolder, uint256 _additionalBalance) external override view returns(uint256) {
+        uint256 currentBalance = (msg.sender == address(securityToken)) ? (securityToken.balanceOf(_tokenHolder))+(_additionalBalance) : securityToken.balanceOf(_tokenHolder);
         uint256 canSendAfter;
         (canSendAfter,,,) = _getKYCValues(_tokenHolder, getDataStore());
         canSendAfter = (canSendAfter == 0 ? defaults.canSendAfter:  canSendAfter);
-        bool unlockedCheck = paused ? _partition == UNLOCKED : (_partition == UNLOCKED && now >= canSendAfter);
-        if (((_partition == LOCKED && now < canSendAfter) && !paused) || unlockedCheck)
+        bool unlockedCheck = paused ? _partition == UNLOCKED : (_partition == UNLOCKED && block.timestamp >= canSendAfter);
+        if (((_partition == LOCKED && block.timestamp < canSendAfter) && !paused) || unlockedCheck)
             return currentBalance;
         else
             return 0;
     }
 
     function getAddressBytes32() public view returns(bytes32) {
-        return bytes32(uint256(address(this)) << 96);
+        return bytes32(uint256(uint160(address(this))) << 96);
     }
 
 }

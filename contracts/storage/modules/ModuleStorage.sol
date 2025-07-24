@@ -1,7 +1,9 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../../libraries/token/ERC20/IERC20.sol";
 import "../../interfaces/ISecurityToken.sol";
+import "../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
 /**
  * @title Storage for Module contract
  * @notice Contract is abstract
@@ -19,12 +21,15 @@ contract ModuleStorage {
 
     IERC20 public polyToken;
 
+    // Address used to manage KYC
+    ITradingRestrictionManager public restrictionManager;
+
     /**
      * @notice Constructor
      * @param _securityToken Address of the security token
      * @param _polyAddress Address of the polytoken
      */
-    constructor(address _securityToken, address _polyAddress) public {
+    constructor(address _securityToken, address _polyAddress) {
         securityToken = ISecurityToken(_securityToken);
         factory = msg.sender;
         polyToken = IERC20(_polyAddress);

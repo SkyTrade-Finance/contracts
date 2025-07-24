@@ -39,13 +39,14 @@ const VolumeRestrictionTMLogic = artifacts.require('./VolumeRestrictionTM.sol');
 const VolumeRestrictionLib = artifacts.require('./VolumeRestrictionLib.sol');
 const VestingEscrowWalletFactory = artifacts.require('./VestingEscrowWalletFactory.sol')
 const VestingEscrowWalletLogic = artifacts.require('./VestingEscrowWallet.sol');
+const TradingRestrictionManager = artifacts.require('./TradingRestrictionManager.sol');
 
 const Web3 = require("web3");
 let BN = Web3.utils.BN;
 const nullAddress = "0x0000000000000000000000000000000000000000";
-const cappedSTOSetupCost = new BN(20000).mul(new BN(10).pow(new BN(18))); // 20K POLY fee
-const usdTieredSTOSetupCost = new BN(100000).mul(new BN(10).pow(new BN(18))); // 100K POLY fee
-const initRegFee = new BN(250).mul(new BN(10).pow(new BN(18))); // 250 POLY fee for registering ticker or security token in registry
+const cappedSTOSetupCost = 0; // 0 POLY fee
+const usdTieredSTOSetupCost = 0; // 0 POLY fee
+const initRegFee = 0; // 0 POLY fee for registering ticker or security token in registry
 let PolyToken;
 let UsdToken;
 let ETHOracle;
@@ -66,6 +67,11 @@ module.exports = function(deployer, network, accounts) {
             DevPolyToken.deployed().then(mockedUSDToken => {
                 UsdToken = mockedUSDToken.address;
             });
+        })
+        .then(() => {
+            return deployer.deploy(TradingRestrictionManager, { from: PolymathAccount })
+        }).then(() => {
+            return TradingRestrictionManager.deployed();
         });
         deployer
             .deploy(
@@ -113,7 +119,44 @@ module.exports = function(deployer, network, accounts) {
         POLYOracle = "0x461d98EF2A0c7Ac1416EF065840fF5d4C946206C"; // Poly Oracle Kovan Address
         ETHOracle = "0x14542627196c7dab26eb11ffd8a407ffc476de76"; // ETH Oracle Kovan Address
         StablePOLYOracle = ""; // TODO
-    } else if (network === "mainnet") {
+    } else if (network === "monadTestnet") {
+        web3 = new Web3(new Web3.providers.HttpProvider("https://testnet-rpc.monad.xyz"));
+        PolymathAccount = accounts[0];
+        PolyToken = DevPolyToken.address; // Development network polytoken address
+        console.log(DevPolyToken);
+        deployer.deploy(DevPolyToken, { from: PolymathAccount }).then(() => {
+            DevPolyToken.deployed().then(mockedUSDToken => {
+                UsdToken = mockedUSDToken.address;
+            });
+        });
+        deployer
+            .deploy(MockOracle, PolyToken, web3.utils.fromAscii("POLY"), web3.utils.fromAscii("USD"), new BN(5).mul(new BN(10).pow(new BN(17))), { from: PolymathAccount }
+            ).then(() => {
+                return MockOracle.deployed();
+            }).then(mockedOracle => {
+                POLYOracle = mockedOracle.address;
+            }).then(() => {
+                return deployer.deploy(StableOracle, POLYOracle, new BN(10).mul(new BN(10).pow(new BN(16))), { from: PolymathAccount });
+            }).then(() => {
+                return StableOracle.deployed();
+            }).then(stableOracle => {
+                StablePOLYOracle = stableOracle.address;
+            })
+            .then(() => {
+                return deployer.deploy(TradingRestrictionManager, { from: PolymathAccount })
+            }).then(() => {
+                return TradingRestrictionManager.deployed();
+            });
+
+        deployer
+            .deploy(MockOracle, nullAddress, web3.utils.fromAscii("ETH"), web3.utils.fromAscii("USD"), new BN(500).mul(new BN(10).pow(new BN(18))), 
+                { from: PolymathAccount }
+            ).then(() => {
+                MockOracle.deployed().then(mockedOracle => {
+                    ETHOracle = mockedOracle.address;
+                });
+            })
+        } else if (network === "mainnet") {
         web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/g5xfoQ0jFSE9S5LwM1Ei"));
         PolymathAccount = accounts[0];
         PolyToken = "0x9992eC3cF6A55b00978cdDF2b27BC6882d88D1eC"; // Mainnet PolyToken Address

@@ -1,9 +1,10 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../../../proxy/OwnedUpgradeabilityProxy.sol";
 import "./USDTieredSTOStorage.sol";
 import "../../../Pausable.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../../storage/modules/STO/STOStorage.sol";
 import "../../../storage/modules/ModuleStorage.sol";
 
@@ -17,7 +18,7 @@ contract USDTieredSTOProxy is USDTieredSTOStorage, STOStorage, ModuleStorage, Pa
     * @param _polyAddress Address of the polytoken
     * @param _implementation representing the address of the new implementation to be set
     */
-    constructor (string memory _version, address _securityToken, address _polyAddress, address _implementation) public ModuleStorage(_securityToken, _polyAddress) {
+    constructor (string memory _version, address _securityToken, address _polyAddress, address _implementation) ModuleStorage(_securityToken, _polyAddress) {
         require(_implementation != address(0), "Implementation address should not be 0x");
         _upgradeTo(_version, _implementation);
     }

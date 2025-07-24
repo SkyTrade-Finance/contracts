@@ -1489,6 +1489,7 @@ contract("USDTieredSTO", async (accounts) => {
     });
 
     describe("Buy Tokens with no discount", async () => {
+        // COPY AND PASTE AFTER Buy Tokens with POLY discount block to find precision issues
         it("should successfully buy using fallback at tier 0 for NONACCREDITED1", async () => {
             let stoId = 0;
             let tierId = 0;

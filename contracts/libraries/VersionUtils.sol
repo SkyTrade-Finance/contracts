@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Helper library use to compare or validate the semantic versions

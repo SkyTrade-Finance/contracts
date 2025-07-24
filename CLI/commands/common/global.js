@@ -21,7 +21,16 @@ function getGasPrice(networkId) {
     case 15: //Ganache
       gasPrice = 50000000000;
       break;
+    case 1337: //Ganache CLI
+      gasPrice = 50000000000;
+      break;
     case 42: //Kovan
+      gasPrice = 50000000000;
+      break;
+    case 56: // BSC Mainnet
+      gasPrice = 50000000000;
+      break;
+    case 97: // BSC Testnet
       gasPrice = 50000000000;
       break;
     default:
@@ -82,7 +91,7 @@ module.exports = {
         Issuer = getAccount(`${__dirname}/../../../keyStore`);
       } else {
         web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-        Issuer = getAccount(`${__dirname}/../../../keyStoreLocal`);
+        Issuer = getAccount(`${__dirname}/keyStoreLocal`);
       }
       defaultGasPrice = getGasPrice(await web3.eth.net.getId());
     }

@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Transfer Manager module for core transfer validation functionality
@@ -14,7 +15,7 @@ contract GeneralTransferManagerStorage {
 
     //Address from which issuances come
     address public issuanceAddress;
-
+    
     // Allows all TimeRestrictions to be offset
     struct Defaults {
         uint64 canSendAfter;
