@@ -1,35 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.5.8;
+pragma solidity 0.8.30;
 
 import "./ITradingRestrictionManager.sol";
-import "openzeppelin-solidity/contracts/cryptography/MerkleProof.sol";
-
-/**
- * @dev Replaces OpenZeppelin's Ownable for Solidity 0.5.8
- */
-contract Ownable {
-    address public owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    constructor () public {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Ownable: caller is not the owner");
-        _;
-    }
-
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-}
+import "../../libraries/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     bytes32 private _root;
+
+    constructor() {}
 
     mapping(address => bool) public isOperator;
     mapping(address => InvestorKYCData) private _kycData;
@@ -87,7 +66,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     ) external returns (bool) {
         require(expiry > block.timestamp, "Investor proof has expired");
 
-        bytes32 firstHash = keccak256(abi.encode(investor, expiry, isAccredited));
+        bytes32 firstHash = keccak256(abi.encode(investor, expiry, isAccredited, investorClass));
         bytes32 leaf = keccak256(abi.encode(firstHash));
 
         require(MerkleProof.verify(proof, _root, leaf), "Invalid proof");
@@ -151,21 +130,22 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
             : nonUSTradingRestrictionPeriod[token];
 
         uint64 unlockTime = startTime + restrictionPeriod;
-        uint64 sendAfter = now >= unlockTime ? _past() : unlockTime;
+        uint64 sendAfter = block.timestamp >= unlockTime ? _past() : unlockTime;
+        uint64 receiveAfter = block.timestamp <= startTime ? _past() : sendAfter;
 
         return (
             sendAfter,
-            _past(),
+            receiveAfter,
             kyc.expiryTime,
             1
         );
     }
 
     function _future() internal view returns (uint64) {
-        return uint64(now + (1 days));
+        return uint64(block.timestamp + (1 days));
     }
 
     function _past() internal view returns (uint64) {
-        return uint64(now - (1 days));
+        return uint64(block.timestamp - (1 days));
     }
 }

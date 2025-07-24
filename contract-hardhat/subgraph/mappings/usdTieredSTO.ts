@@ -1,4 +1,4 @@
-import { TokenPurchase as TokenPurchaseSchema } from "../../generated/schema"
+import { STOState, TokenPurchase as TokenPurchaseSchema } from "../../generated/schema"
 import { TokenPurchase } from "../../generated/templates/USDTieredSTO/USDTieredSTO"
 
 
@@ -21,6 +21,16 @@ export function handleTokenPurchase(event: TokenPurchase): void {
   entity.timestamp = event.block.timestamp;
 
   entity.save()
+
+  let sto = STOState.load(event.address.toHex());
+  if (!sto) {
+    sto = new STOState(event.address.toHex());
+    sto.tokensSold = event.params._tokens;
+    sto.finalized = false;
+  } else {
+    sto.tokensSold = sto.tokensSold.plus(event.params._tokens);
+  }
+  sto.save();
 }
 
 

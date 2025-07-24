@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT 
+pragma solidity 0.8.30;
 
 import "../../modules/UpgradableModuleFactory.sol";
 import "./DummySTOProxy.sol";
@@ -21,8 +22,8 @@ contract DummySTOFactory is UpgradableModuleFactory {
         address _polymathRegistry,
         bool _isCostInPoly
     )
-        public
         UpgradableModuleFactory("3.0.0", _setupCost, _logicContract, _polymathRegistry, _isCostInPoly)
+        Ownable()
     {
         name = "DummySTO";
         title = "Dummy STO";
@@ -41,7 +42,7 @@ contract DummySTOFactory is UpgradableModuleFactory {
      * @return address Contract address of the Module
      */
     function deploy(bytes calldata _data) external returns(address) {
-        address dummySTO = address(new DummySTOProxy(logicContracts[latestUpgrade].version, msg.sender, polymathRegistry.getAddress("PolyToken"), logicContracts[latestUpgrade].logicContract));
+        address dummySTO = address(new DummySTOProxy(logicContracts[latestUpgrade].version, msg.sender, polymathRegistry.addressGetter("PolyToken"), logicContracts[latestUpgrade].logicContract));
         _initializeModule(dummySTO, _data);
         return dummySTO;
     }

@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.30;
 
 interface IPolymathRegistry {
 
@@ -7,9 +8,9 @@ interface IPolymathRegistry {
     /**
      * @notice Returns the contract address
      * @param _nameKey is the key for the contract address mapping
-     * @return address
+     *  registryAddress
      */
-    function getAddress(string calldata _nameKey) external view returns(address registryAddress);
+    function addressGetter(string calldata _nameKey) external view returns(address registryAddress);
 
     /**
      * @notice Changes the contract address

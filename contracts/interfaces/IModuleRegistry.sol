@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 /**
  * @title Interface for the Polymath Module Registry contract
@@ -56,7 +57,7 @@ interface IModuleRegistry {
      * @notice Check that a module and its factory are compatible
      * @param _moduleFactory is the address of the relevant module factory
      * @param _securityToken is the address of the relevant security token
-     * @return bool whether module and token are compatible
+     *  bool whether module and token are compatible
      */
     function isCompatibleModule(address _moduleFactory, address _securityToken) external view returns(bool isCompatible);
 
@@ -79,9 +80,9 @@ interface IModuleRegistry {
     /**
      * @notice Returns the verified status, and reputation of the entered Module Factory
      * @param _factoryAddress is the address of the module factory
-     * @return bool indicating whether module factory is verified
-     * @return address of the factory owner
-     * @return address array which contains the list of securityTokens that use that module factory
+     *  bool indicating whether module factory is verified
+     *  address of the factory owner
+     *  address array which contains the list of securityTokens that use that module factory
      */
     function getFactoryDetails(address _factoryAddress) external view returns(bool isVerified, address factoryOwner, address[] memory usingTokens);
 
@@ -89,29 +90,29 @@ interface IModuleRegistry {
      * @notice Returns all the tags related to the a module type which are valid for the given token
      * @param _moduleType is the module type
      * @param _securityToken is the token
-     * @return list of tags
-     * @return corresponding list of module factories
+     *  list of tags
+     *  corresponding list of module factories
      */
     function getTagsByTypeAndToken(uint8 _moduleType, address _securityToken) external view returns(bytes32[] memory tags, address[] memory factories);
 
     /**
      * @notice Returns all the tags related to the a module type which are valid for the given token
      * @param _moduleType is the module type
-     * @return list of tags
-     * @return corresponding list of module factories
+     *  list of tags
+     *  corresponding list of module factories
      */
     function getTagsByType(uint8 _moduleType) external view returns(bytes32[] memory tags, address[] memory factories);
 
     /**
      * @notice Returns the list of addresses of all Module Factory of a particular type
      * @param _moduleType Type of Module
-     * @return address array that contains the list of addresses of module factory contracts.
+     *  address array that contains the list of addresses of module factory contracts.
      */
     function getAllModulesByType(uint8 _moduleType) external view returns(address[] memory factories);
     /**
      * @notice Returns the list of addresses of Module Factory of a particular type
      * @param _moduleType Type of Module
-     * @return address array that contains the list of addresses of module factory contracts.
+     *  address array that contains the list of addresses of module factory contracts.
      */
     function getModulesByType(uint8 _moduleType) external view returns(address[] memory factories);
 
@@ -119,7 +120,7 @@ interface IModuleRegistry {
      * @notice Returns the list of available Module factory addresses of a particular type for a given token.
      * @param _moduleType is the module type to look for
      * @param _securityToken is the address of SecurityToken
-     * @return address array that contains the list of available addresses of module factory contracts.
+     *  address array that contains the list of available addresses of module factory contracts.
      */
     function getModulesByTypeAndToken(uint8 _moduleType, address _securityToken) external view returns(address[] memory factories);
 
@@ -130,13 +131,13 @@ interface IModuleRegistry {
 
     /**
      * @notice Get the owner of the contract
-     * @return address owner
+     *  address owner
      */
     function owner() external view returns(address ownerAddress);
 
     /**
      * @notice Check whether the contract operations is paused or not
-     * @return bool
+     *  bool
      */
     function isPaused() external view returns(bool paused);
 

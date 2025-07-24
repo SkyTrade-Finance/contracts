@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT 
+pragma solidity 0.8.30;
 
 import "../proxy/Proxy.sol";
 import "../interfaces/IModule.sol";
@@ -13,8 +14,9 @@ import "../interfaces/token/IERC1594.sol";
 import "../interfaces/token/IERC1643.sol";
 import "../interfaces/token/IERC1644.sol";
 import "../interfaces/ITransferManager.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../libraries/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 
 /**
  * @title Security Token contract
@@ -28,7 +30,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
  */
 contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594, IERC1643, IERC1644, IERC1410, Proxy {
 
-    using SafeMath for uint256;
+    // Allow the contract to receive Ether
+    receive() external payable {}
 
     // Emit at the time when module get added
     event ModuleAdded(
@@ -73,7 +76,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
     event ModuleBudgetChanged(uint8[] _moduleTypes, address _module, uint256 _oldBudget, uint256 _budget); //Event emitted by the tokenLib.
 
     // Constructor
-    constructor() public {
+    constructor() {
         initialized = true;
     }
 
@@ -82,7 +85,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @dev Expected to be called atomically with the proxy being created, by the owner of the token
      * @dev Can only be called once
      */
-    function initialize(address _getterDelegate) public {
+    function initialize(address _getterDelegate) public virtual {
         //Expected to be called atomically with the proxy being created
         require(!initialized, "Already initialized");
         getterDelegate = _getterDelegate;
@@ -120,7 +123,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
 
     function _isValidOperator(address _from, address _operator, bytes32 _partition) internal view {
         _isAuthorised(
-            allowance(_from, _operator) == uint(-1) || partitionApprovals[_from][_partition][_operator]
+            allowance(_from, _operator) == type(uint256).max || partitionApprovals[_from][_partition][_operator]
         );
     }
 
@@ -191,7 +194,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
         bytes32 _label,
         bool _archived
     )
-        public
+        public virtual
         nonReentrant
     {
         _onlyOwner();
@@ -417,9 +420,9 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @notice Overloaded version of the transfer function
      * @param _to receiver of transfer
      * @param _value value of transfer
-     * @return bool success
+     * @return success success
      */
-    function transfer(address _to, uint256 _value) public returns(bool success) {
+    function transfer(address _to, uint256 _value) public override returns(bool success) {
         _transferWithData(msg.sender, _to, _value, "");
         return true;
     }
@@ -452,7 +455,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @param _value value of transfer
      * @return bool success
      */
-    function transferFrom(address _from, address _to, uint256 _value) public returns(bool) {
+    function transferFrom(address _from, address _to, uint256 _value) public override returns(bool) {
         transferFromWithData(_from, _to, _value, "");
         return true;
     }
@@ -543,7 +546,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
     function _returnPartition(uint256 _beforeBalance, uint256 _afterBalance, uint256 _value) internal pure returns(bytes32 toPartition) {
         // return LOCKED only when the transaction `_value` should be equal to the change in the LOCKED partition
         // balance otherwise return UNLOCKED
-        toPartition = _afterBalance.sub(_beforeBalance) == _value ? LOCKED : UNLOCKED; // Returning the same partition UNLOCKED
+        toPartition = _afterBalance - _beforeBalance == _value ? LOCKED : UNLOCKED; // Returning the same partition UNLOCKED
     }
 
     ///////////////////////
@@ -558,7 +561,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @param _operator An address which is being authorised.
      */
     function authorizeOperator(address _operator) public {
-        _approve(msg.sender, _operator, uint(-1));
+        _approve(msg.sender, _operator, type(uint256).max);
         emit AuthorizedOperator(_operator, msg.sender);
     }
 
@@ -634,7 +637,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @param _to receiver of transfer
      * @param _value value of transfer
      * @param _data data to indicate validation
-     * @return bool success
+     * @return verified success
      */
     function _updateTransfer(address _from, address _to, uint256 _value, bytes memory _data) internal nonReentrant returns(bool verified) {
         // NB - the ordering in this function implies the following:
@@ -748,7 +751,6 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @dev Can only be called by the issuer or STO attached to the token.
      * @param _tokenHolders A list of addresses to whom the minted tokens will be dilivered
      * @param _values A list of number of tokens get minted and transfer to corresponding address of the investor from _tokenHolders[] list
-     * @return success
      */
     function issueMulti(address[] memory _tokenHolders, uint256[] memory _values) public {
         _isIssuanceAllowed();
@@ -874,7 +876,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
         // currentCheckpointId can only be incremented by 1 and hence it can not be overflowed
         currentCheckpointId = currentCheckpointId + 1;
         /*solium-disable-next-line security/no-block-members*/
-        checkpointTimes.push(now);
+        checkpointTimes.push(block.timestamp);
         checkpointTotalSupply[currentCheckpointId] = totalSupply();
         emit CheckpointCreated(currentCheckpointId, dataStore.getAddressArrayLength(INVESTORSKEY));
         return currentCheckpointId;
@@ -914,7 +916,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @return byte Ethereum status code (ESC)
      * @return bytes32 Application specific reason code
      */
-    function canTransfer(address _to, uint256 _value, bytes calldata _data) external view returns (byte, bytes32) {
+    function canTransfer(address _to, uint256 _value, bytes calldata _data) external view returns (bytes1, bytes32) {
         return _canTransfer(msg.sender, _to, _value, _data);
     }
 
@@ -926,17 +928,17 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @param _to address The address which you want to transfer to
      * @param _value uint256 the amount of tokens to be transferred
      * @param _data The `bytes _data` allows arbitrary data to be submitted alongside the transfer.
-     * @return byte Ethereum status code (ESC)
-     * @return bytes32 Application specific reason code
+     * @return reasonCode Ethereum status code (ESC)
+     * @return appCode Application specific reason code
      */
-    function canTransferFrom(address _from, address _to, uint256 _value, bytes calldata _data) external view returns (byte reasonCode, bytes32 appCode) {
+    function canTransferFrom(address _from, address _to, uint256 _value, bytes calldata _data) external view returns (bytes1 reasonCode, bytes32 appCode) {
         (reasonCode, appCode) = _canTransfer(_from, _to, _value, _data);
         if (_isSuccess(reasonCode) && _value > allowance(_from, msg.sender)) {
             return (StatusCodes.code(StatusCodes.Status.InsufficientAllowance), bytes32(0));
         }
     }
 
-    function _canTransfer(address _from, address _to, uint256 _value, bytes memory _data) internal view returns (byte, bytes32) {
+    function _canTransfer(address _from, address _to, uint256 _value, bytes memory _data) internal view returns (bytes1, bytes32) {
         bytes32 appCode;
         bool success;
         if (_value % granularity != 0) {
@@ -954,9 +956,9 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
      * @param _partition The partition from which to transfer tokens
      * @param _value The amount of tokens to transfer from `_partition`
      * @param _data Additional data attached to the transfer of tokens
-     * @return ESC (Ethereum Status Code) following the EIP-1066 standard
-     * @return Application specific reason codes with additional details
-     * @return The partition to which the transferred tokens were allocated for the _to address
+     * @return reasonCode ESC (Ethereum Status Code) following the EIP-1066 standard
+     * @return appStatusCode Application specific reason codes with additional details
+     * @return toPartition The partition to which the transferred tokens were allocated for the _to address
      */
     function canTransferByPartition(
         address _from,
@@ -967,7 +969,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
     )
         external
         view
-        returns (byte reasonCode, bytes32 appStatusCode, bytes32 toPartition)
+        returns (bytes1 reasonCode, bytes32 appStatusCode, bytes32 toPartition)
     {
         if (_partition == UNLOCKED) {
             (reasonCode, appStatusCode) = _canTransfer(_from, _to, _value, _data);
@@ -1052,15 +1054,15 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
         emit ControllerRedemption(msg.sender, _tokenHolder, _value, _data, _operatorData);
     }
 
-    function _implementation() internal view returns(address) {
+    function _implementation() internal view override returns(address) {
         return getterDelegate;
     }
 
     function updateFromRegistry() public {
         _onlyOwner();
-        moduleRegistry = IModuleRegistry(polymathRegistry.getAddress("ModuleRegistry"));
-        securityTokenRegistry = ISecurityTokenRegistry(polymathRegistry.getAddress("SecurityTokenRegistry"));
-        polyToken = IERC20(polymathRegistry.getAddress("PolyToken"));
+        moduleRegistry = IModuleRegistry(polymathRegistry.addressGetter("ModuleRegistry"));
+        securityTokenRegistry = ISecurityTokenRegistry(polymathRegistry.addressGetter("SecurityTokenRegistry"));
+        polyToken = IERC20(polymathRegistry.addressGetter("PolyToken"));
     }
 
     //Ownable Functions
@@ -1103,7 +1105,7 @@ contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594
     * @param status Binary ERC-1066 status code
     * @return successful A boolean representing if the status code represents success
     */
-    function _isSuccess(byte status) internal pure returns (bool successful) {
+    function _isSuccess(bytes1 status) internal pure returns (bool successful) {
         return (status & 0x0F) == 0x01;
     }
 }

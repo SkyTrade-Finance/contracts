@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "../../modules/STO/STO.sol";
 import "../../interfaces/ISecurityToken.sol";
@@ -15,7 +16,7 @@ contract DummySTO is DummySTOStorage, STO {
      * @notice Constructor
      * @param _securityToken Address of the security token
      */
-    constructor(address _securityToken, address _polyToken) public Module(_securityToken, _polyToken) {
+    constructor(address _securityToken, address _polyToken) Module(_securityToken, _polyToken) {
 
     }
 
@@ -51,7 +52,7 @@ contract DummySTO is DummySTOStorage, STO {
         require(_canBuy(_investor), "Unauthorized");
         securityToken.issue(_investor, _amount, "");
         if (investors[_investor] == 0) {
-            investorCount = investorCount + 1;
+            DummySTOStorage._investorCount = DummySTOStorage._investorCount + 1;
         }
         //TODO: Add SafeMath maybe
         investors[_investor] = investors[_investor] + _amount;
@@ -62,27 +63,31 @@ contract DummySTO is DummySTOStorage, STO {
      * @notice Returns the total no. of investors
      */
     function getNumberInvestors() public view returns(uint256) {
-        return investorCount;
+        return DummySTOStorage._investorCount;
     }
 
     /**
      * @notice Returns the total no. of investors
      */
-    function getTokensSold() external view returns(uint256) {
+    function getTokensSold() external view override returns(uint256) {
         return 0;
     }
 
     /**
      * @notice Returns the permissions flag that are associated with STO
      */
-    function getPermissions() public view returns(bytes32[] memory) {
+    function getPermissions() public view override returns(bytes32[] memory) {
         bytes32[] memory allPermissions = new bytes32[](1);
         allPermissions[0] = ADMIN;
         return allPermissions;
     }
 
-    function () external payable {
+    fallback() external payable {
         //Payable fallback function to allow us to test leaking ETH
     }
 
-}
+    receive() external payable {
+        //To handle plain Ether transfers
+    }
+    
+    }

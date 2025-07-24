@@ -1,11 +1,12 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT 
+pragma solidity 0.8.30;
 
 import "../../proxy/OwnedUpgradeabilityProxy.sol";
 import "../../Pausable.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
 import "../../storage/modules/STO/STOStorage.sol";
 import "../../storage/modules/ModuleStorage.sol";
 import "./DummySTOStorage.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title DummySTO module Proxy
@@ -24,7 +25,6 @@ contract DummySTOProxy is DummySTOStorage, STOStorage, ModuleStorage, Pausable, 
         address _polyAddress,
         address _implementation
     )
-        public
         ModuleStorage(_securityToken, _polyAddress)
     {
         require(

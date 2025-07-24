@@ -1,10 +1,10 @@
-pragma solidity 0.5.8;
+pragma solidity 0.8.30;
 
 import "../interfaces/IDataStore.sol";
 import "../interfaces/IModuleRegistry.sol";
 import "../interfaces/IPolymathRegistry.sol";
 import "../interfaces/ISecurityTokenRegistry.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../libraries/token/ERC20/IERC20.sol";
 
 contract SecurityTokenStorage {
 

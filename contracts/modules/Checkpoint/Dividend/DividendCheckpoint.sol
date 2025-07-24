@@ -5,20 +5,18 @@
  * the function may fail. If this happens investors can pull their dividends, or the Issuer
  * can use pushDividendPaymentToAddresses to provide an explict address list in batches
  */
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import ".././ICheckpoint.sol";
 import "../../../storage/modules/Checkpoint/Dividend/DividendCheckpointStorage.sol";
 import "../../Module.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/math/Math.sol";
 
 /**
  * @title Checkpoint module for issuing ether dividends
  * @dev abstract contract
  */
-contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
-    using SafeMath for uint256;
+abstract contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
     uint256 internal constant e18 = uint256(10) ** uint256(18);
 
     event SetDefaultExcludedAddresses(address[] _excluded);
@@ -31,9 +29,9 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
         require(_dividendIndex < dividends.length, "Invalid dividend");
         require(!dividends[_dividendIndex].reclaimed, "Dividend reclaimed");
         /*solium-disable-next-line security/no-block-members*/
-        require(now >= dividends[_dividendIndex].maturity, "Dividend maturity in future");
+        require(block.timestamp >= dividends[_dividendIndex].maturity, "Dividend maturity in future");
         /*solium-disable-next-line security/no-block-members*/
-        require(now < dividends[_dividendIndex].expiry, "Dividend expiry in past");
+        require(block.timestamp < dividends[_dividendIndex].expiry, "Dividend expiry in past");
     }
 
     /**
@@ -48,7 +46,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
 
     /**
     * @notice Init function i.e generalise function to maintain the structure of the module contract
-    * @return bytes4
+    *  bytes4
     */
     function getInitFunction() public pure returns(bytes4) {
         return this.configure.selector;
@@ -70,7 +68,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
 
     /**
      * @notice Return the default excluded addresses
-     * @return List of excluded addresses
+     *  List of excluded addresses
      */
     function getDefaultExcluded() external view returns(address[] memory) {
         return excluded;
@@ -81,7 +79,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
      */
     function getTreasuryWallet() public view returns(address payable) {
         if (wallet == address(0)) {
-            address payable treasuryWallet = address(uint160(IDataStore(getDataStore()).getAddress(TREASURY)));
+            address payable treasuryWallet = payable(IDataStore(getDataStore()).getAddress(TREASURY));
             require(address(treasuryWallet) != address(0), "Invalid address");
             return treasuryWallet;
         }
@@ -91,7 +89,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
 
     /**
      * @notice Creates a checkpoint on the security token
-     * @return Checkpoint ID
+     *  Checkpoint ID
      */
     function createCheckpoint() public withPerm(OPERATOR) returns(uint256) {
         return securityToken.createCheckpoint();
@@ -186,7 +184,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
         // The investors list maybe smaller than _end - _start becuase it only contains addresses that had a positive balance
         // the _start and _end used here are for the address list stored in the dataStore
         for (uint256 i = 0; i < investors.length; i++) {
-            address payable payee = address(uint160(investors[i]));
+            address payable payee = payable(investors[i]);
             if ((!dividend.claimed[payee]) && (!dividend.dividendExcluded[payee])) {
                 _payDividend(payee, dividend, _dividendIndex);
             }
@@ -202,7 +200,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
         Dividend storage dividend = dividends[_dividendIndex];
         require(!dividend.claimed[msg.sender], "Dividend already claimed");
         require(!dividend.dividendExcluded[msg.sender], "msg.sender excluded from Dividend");
-        _payDividend(msg.sender, dividend, _dividendIndex);
+        _payDividend(payable(msg.sender), dividend, _dividendIndex);
     }
 
     /**
@@ -211,19 +209,19 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
      * @param _dividend Storage with previously issued dividends
      * @param _dividendIndex Dividend to pay
      */
-    function _payDividend(address payable _payee, Dividend storage _dividend, uint256 _dividendIndex) internal;
+    function _payDividend(address payable _payee, Dividend storage _dividend, uint256 _dividendIndex) internal virtual;
 
     /**
      * @notice Issuer can reclaim remaining unclaimed dividend amounts, for expired dividends
      * @param _dividendIndex Dividend to reclaim
      */
-    function reclaimDividend(uint256 _dividendIndex) external;
+    function reclaimDividend(uint256 _dividendIndex) external virtual;
 
     /**
      * @notice Calculate amount of dividends claimable
      * @param _dividendIndex Dividend to calculate
      * @param _payee Affected investor address
-     * @return claim, withheld amounts
+     *  claim, withheld amounts
      */
     function calculateDividend(uint256 _dividendIndex, address _payee) public view returns(uint256, uint256) {
         require(_dividendIndex < dividends.length, "Invalid dividend");
@@ -232,15 +230,15 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
             return (0, 0);
         }
         uint256 balance = securityToken.balanceOfAt(_payee, dividend.checkpointId);
-        uint256 claim = balance.mul(dividend.amount).div(dividend.totalSupply);
-        uint256 withheld = claim.mul(withholdingTax[_payee]).div(e18);
+        uint256 claim = balance * (dividend.amount) / (dividend.totalSupply);
+        uint256 withheld = claim * (withholdingTax[_payee]) / (e18);
         return (claim, withheld);
     }
 
     /**
      * @notice Get the index according to the checkpoint id
      * @param _checkpointId Checkpoint id to query
-     * @return uint256[]
+     *  uint256[]
      */
     function getDividendIndex(uint256 _checkpointId) public view returns(uint256[] memory) {
         uint256 counter = 0;
@@ -265,7 +263,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
      * @notice Allows issuer to withdraw withheld tax
      * @param _dividendIndex Dividend to withdraw from
      */
-    function withdrawWithholding(uint256 _dividendIndex) external;
+    function withdrawWithholding(uint256 _dividendIndex) external virtual;
 
     /**
      * @notice Allows issuer to change maturity / expiry dates for dividends
@@ -281,7 +279,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
         require(_dividendIndex < dividends.length, "Invalid dividend");
         require(_expiry > _maturity, "Expiry before maturity");
         Dividend storage dividend = dividends[_dividendIndex];
-        require(dividend.expiry > now, "Dividend already expired");
+        require(dividend.expiry > block.timestamp, "Dividend already expired");
         dividend.expiry = _expiry;
         dividend.maturity = _maturity;
         emit UpdateDividendDates(_dividendIndex, _maturity, _expiry);
@@ -289,12 +287,12 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
 
     /**
      * @notice Get static dividend data
-     * @return uint256[] timestamp of dividends creation
-     * @return uint256[] timestamp of dividends maturity
-     * @return uint256[] timestamp of dividends expiry
-     * @return uint256[] amount of dividends
-     * @return uint256[] claimed amount of dividends
-     * @return bytes32[] name of dividends
+     *  uint256[] timestamp of dividends creation
+     *  uint256[] timestamp of dividends maturity
+     *  uint256[] timestamp of dividends expiry
+     *  uint256[] amount of dividends
+     *  uint256[] claimed amount of dividends
+     *  bytes32[] name of dividends
      */
     function getDividendsData() external view returns (
         uint256[] memory createds,
@@ -317,12 +315,12 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
 
     /**
      * @notice Get static dividend data
-     * @return uint256 timestamp of dividend creation
-     * @return uint256 timestamp of dividend maturity
-     * @return uint256 timestamp of dividend expiry
-     * @return uint256 amount of dividend
-     * @return uint256 claimed amount of dividend
-     * @return bytes32 name of dividend
+     *  uint256 timestamp of dividend creation
+     *  uint256 timestamp of dividend maturity
+     *  uint256 timestamp of dividend expiry
+     *  uint256 amount of dividend
+     *  uint256 claimed amount of dividend
+     *  bytes32 name of dividend
      */
     function getDividendData(uint256 _dividendIndex) public view returns (
         uint256 created,
@@ -343,12 +341,12 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
     /**
      * @notice Retrieves list of investors, their claim status and whether they are excluded
      * @param _dividendIndex Dividend to withdraw from
-     * @return address[] list of investors
-     * @return bool[] whether investor has claimed
-     * @return bool[] whether investor is excluded
-     * @return uint256[] amount of withheld tax (estimate if not claimed)
-     * @return uint256[] amount of claim (estimate if not claimeed)
-     * @return uint256[] investor balance
+     *  address[] list of investors
+     *  bool[] whether investor has claimed
+     *  bool[] whether investor is excluded
+     *  uint256[] amount of withheld tax (estimate if not claimed)
+     *  uint256[] amount of claim (estimate if not claimeed)
+     *  uint256[] investor balance
      */
     function getDividendProgress(uint256 _dividendIndex) external view returns (
         address[] memory investors,
@@ -375,11 +373,11 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
             if (!resultExcluded[i]) {
                 if (resultClaimed[i]) {
                     resultWithheld[i] = dividend.withheld[investors[i]];
-                    resultAmount[i] = resultBalance[i].mul(dividend.amount).div(dividend.totalSupply).sub(resultWithheld[i]);
+                    resultAmount[i] = resultBalance[i] * (dividend.amount) / (dividend.totalSupply) - (resultWithheld[i]);
                 } else {
                     (uint256 claim, uint256 withheld) = calculateDividend(_dividendIndex, investors[i]);
                     resultWithheld[i] = withheld;
-                    resultAmount[i] = claim.sub(withheld);
+                    resultAmount[i] = claim - (withheld);
                 }
             }
         }
@@ -388,9 +386,9 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
     /**
      * @notice Retrieves list of investors, their balances, and their current withholding tax percentage
      * @param _checkpointId Checkpoint Id to query for
-     * @return address[] list of investors
-     * @return uint256[] investor balances
-     * @return uint256[] investor withheld percentages
+     *  address[] list of investors
+     *  uint256[] investor balances
+     *  uint256[] investor withheld percentages
      */
     function getCheckpointData(uint256 _checkpointId) external view returns (address[] memory investors, uint256[] memory balances, uint256[] memory withholdings) {
         require(_checkpointId <= securityToken.currentCheckpointId(), "Invalid checkpoint");
@@ -406,7 +404,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
     /**
      * @notice Checks whether an address is excluded from claiming a dividend
      * @param _dividendIndex Dividend to withdraw from
-     * @return bool whether the address is excluded
+     *  bool whether the address is excluded
      */
     function isExcluded(address _investor, uint256 _dividendIndex) external view returns (bool) {
         require(_dividendIndex < dividends.length, "Invalid dividend");
@@ -416,7 +414,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
     /**
      * @notice Checks whether an address has claimed a dividend
      * @param _dividendIndex Dividend to withdraw from
-     * @return bool whether the address has claimed
+     *  bool whether the address has claimed
      */
     function isClaimed(address _investor, uint256 _dividendIndex) external view returns (bool) {
         require(_dividendIndex < dividends.length, "Invalid dividend");
@@ -425,7 +423,7 @@ contract DividendCheckpoint is DividendCheckpointStorage, ICheckpoint, Module {
 
     /**
      * @notice Return the permissions flag that are associated with this module
-     * @return bytes32 array
+     *  bytes32 array
      */
     function getPermissions() public view returns(bytes32[] memory) {
         bytes32[] memory allPermissions = new bytes32[](2);

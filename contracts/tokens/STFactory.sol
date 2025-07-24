@@ -1,4 +1,5 @@
-pragma solidity 0.5.8;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
 
 import "./SecurityTokenProxy.sol";
 import "../proxy/OwnedUpgradeabilityProxy.sol";
@@ -6,7 +7,7 @@ import "../interfaces/ISTFactory.sol";
 import "../interfaces/ISecurityToken.sol";
 import "../interfaces/IPolymathRegistry.sol";
 import "../interfaces/IOwnable.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "../libraries/Ownable.sol";
 import "../interfaces/IModuleRegistry.sol";
 import "../interfaces/IPolymathRegistry.sol";
 import "../datastore/DataStoreFactory.sol";
@@ -36,12 +37,6 @@ contract STFactory is ISTFactory, Ownable {
     uint256 public latestUpgrade;
 
     event LogicContractSet(string _version, uint256 _upgrade, address _logicContract, bytes _initializationData, bytes _upgradeData);
-    event TokenUpgraded(
-        address indexed _securityToken,
-        uint256 indexed _version
-    );
-    event DefaultTransferManagerUpdated(address indexed _oldTransferManagerFactory, address indexed _newTransferManagerFactory);
-    event DefaultDataStoreUpdated(address indexed _oldDataStoreFactory, address indexed _newDataStoreFactory);
 
     constructor(
         address _polymathRegistry,
@@ -51,7 +46,6 @@ contract STFactory is ISTFactory, Ownable {
         address _logicContract,
         bytes memory _initializationData
     )
-        public
     {
         require(_logicContract != address(0), "Invalid Address");
         require(_transferManagerFactory != address(0), "Invalid Address");
@@ -184,10 +178,10 @@ contract STFactory is ISTFactory, Ownable {
         require(tokenUpgrade[msg.sender] != 0, "Invalid token");
         uint256 newVersion = tokenUpgrade[msg.sender] + 1;
         require(newVersion <= latestUpgrade, "Incorrect version");
-        OwnedUpgradeabilityProxy(address(uint160(msg.sender))).upgradeToAndCall(logicContracts[newVersion].version, logicContracts[newVersion].logicContract, logicContracts[newVersion].upgradeData);
+        OwnedUpgradeabilityProxy(payable(address(uint160(msg.sender)))).upgradeToAndCall(logicContracts[newVersion].version, logicContracts[newVersion].logicContract, logicContracts[newVersion].upgradeData);
         tokenUpgrade[msg.sender] = newVersion;
         // Check that all modules remain valid
-        IModuleRegistry moduleRegistry = IModuleRegistry(polymathRegistry.getAddress("ModuleRegistry"));
+        IModuleRegistry moduleRegistry = IModuleRegistry(polymathRegistry.addressGetter("ModuleRegistry"));
         address moduleFactory;
         bool isArchived;
         for (uint8 i = 1; i < _maxModuleType; i++) {
