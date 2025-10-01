@@ -173,7 +173,7 @@ abstract contract ModuleFactory is IModuleFactory, Ownable {
     function setupCostInPoly() public returns (uint256) {
         if (isCostInPoly)
             return setupCost;
-        uint256 polyRate = IOracle(polymathRegistry.getAddress(POLY_ORACLE)).getPrice();
+        uint256 polyRate = IOracle(polymathRegistry.addressGetter(POLY_ORACLE)).getPrice();
         return DecimalMath.div(setupCost, polyRate);
     }
 
@@ -182,7 +182,7 @@ abstract contract ModuleFactory is IModuleFactory, Ownable {
      */
     function _takeFee() internal returns(uint256) {
         uint256 polySetupCost = setupCostInPoly();
-        address polyToken = polymathRegistry.getAddress("PolyToken");
+        address polyToken = polymathRegistry.addressGetter("PolyToken");
         if (polySetupCost > 0) {
             require(IERC20(polyToken).transferFrom(msg.sender, owner(), polySetupCost), "Insufficient allowance for module fee");
         }

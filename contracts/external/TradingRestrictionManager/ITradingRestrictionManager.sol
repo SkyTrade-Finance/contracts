@@ -18,6 +18,12 @@ interface ITradingRestrictionManager {
         bytes32 root
     ) external;
 
+    function updateMerkleRootWithSignature(
+        bytes32 root,
+        uint64 expiry,
+        bytes calldata signature
+    ) external;
+
     function verifyInvestor(
         bytes32[] calldata proof,
         address investor,
@@ -46,4 +52,6 @@ interface ITradingRestrictionManager {
         uint64 expiryTime,
         uint8 added
     );
+
+    function getCurrentMerkleRoot() external view returns (bytes32 root, uint64 expiry);
 }

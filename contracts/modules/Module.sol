@@ -10,6 +10,8 @@ import "../interfaces/ICheckPermission.sol";
 import "../storage/modules/ModuleStorage.sol";
 import "../libraries/token/ERC20/IERC20.sol";
 import "../libraries/Ownable.sol";
+import "../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
+import "../interfaces/IPolymathRegistry.sol";
 
 /**
  * @title Interface that any module contract should implement
@@ -91,14 +93,13 @@ abstract contract Module is IModule, ModuleStorage, Pausable {
         payable(msg.sender).transfer(address(this).balance);
     }
 
-
     /**
-     * @notice Sets the address of the trading restriction (KYC) manager contract
-     * @param _restrictionManager Address of the Trading Restriction Manager contract
+     * @notice Gets the trading restriction manager from the PolymathRegistry
+     * @return The trading restriction manager contract
      */
-    function setTradingRestrictionManager(address _restrictionManager) external {
-        _onlySecurityTokenOwner();
-        restrictionManager = ITradingRestrictionManager(_restrictionManager);
-        emit TradingRestrictionManagerUpdated(_restrictionManager);
+    function getTradingRestrictionManager() public view returns (ITradingRestrictionManager) {
+        address restrictionManagerAddress = IPolymathRegistry(securityToken.polymathRegistry()).addressGetter("TradingRestrictionManager");
+        require(restrictionManagerAddress != address(0), "TradingRestrictionManager not set in registry");
+        return ITradingRestrictionManager(restrictionManagerAddress);
     }
 }
