@@ -181,7 +181,7 @@ contract STFactory is ISTFactory, Ownable {
         OwnedUpgradeabilityProxy(payable(address(uint160(msg.sender)))).upgradeToAndCall(logicContracts[newVersion].version, logicContracts[newVersion].logicContract, logicContracts[newVersion].upgradeData);
         tokenUpgrade[msg.sender] = newVersion;
         // Check that all modules remain valid
-        IModuleRegistry moduleRegistry = IModuleRegistry(polymathRegistry.getAddress("ModuleRegistry"));
+        IModuleRegistry moduleRegistry = IModuleRegistry(polymathRegistry.addressGetter("ModuleRegistry"));
         address moduleFactory;
         bool isArchived;
         for (uint8 i = 1; i < _maxModuleType; i++) {

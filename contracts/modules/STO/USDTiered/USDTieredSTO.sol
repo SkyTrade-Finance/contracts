@@ -7,6 +7,7 @@ import "../../../interfaces/IOracle.sol";
 import "../../../libraries/DecimalMath.sol";
 import "./USDTieredSTOStorage.sol";
 import "../../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
+import "../../../interfaces/IPermit2.sol";
 
 
 /**
@@ -347,9 +348,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
     /**
     * @notice receive function - assumes ETH being invested
     */
-    receive() external payable {
-        buyWithETHRateLimited(msg.sender, 0);
-    }
+    receive() external payable {}
 
     // Buy functions without rate restriction
     fallback() external payable {
@@ -365,22 +364,65 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         return buyWithPOLYRateLimited(_beneficiary, _investedPOLY, 0);
     }
 
-    function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken, bytes32[] calldata proof, uint64 expiry, bool isAccredited, ITradingRestrictionManager.InvestorClass investorClass) external returns (uint256, uint256, uint256) {
-        if (address(restrictionManager) == address(0)) {    
-            return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-        } else {
-            require (
-                ITradingRestrictionManager(restrictionManager).verifyInvestor(proof, _beneficiary, expiry, isAccredited, investorClass),
-                "Investor verification failed"
-            );
-            return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-        }
-    }
+    /**
+     * @notice Purchase tokens using USD with optional Permit2 support
+     * @param _beneficiary Address where security tokens will be sent
+     * @param _investedSC Amount of Stable coins invested
+     * @param _usdToken Address of USD stable coin to buy tokens with
+     * @param proof Merkle proof for investor verification
+     * @param expiry Expiry timestamp for the proof
+     * @param isAccredited Whether the investor is accredited
+     * @param investorClass Investor class for restrictions
+     * @param _signedRoot Signed merkle root
+     * @param _rootExpiry Root expiry timestamp
+     * @param _signature Signature for root validation
+     * @param _nonce Permit2 nonce
+     * @param _deadline Permit2 deadline
+     * @param _permitSignature Permit2 signature (optional - pass empty bytes for traditional method)
+     */
+    function buyWithUSD(
+        address _beneficiary, 
+        uint256 _investedSC, 
+        IERC20 _usdToken, 
+        bytes32[] calldata proof, 
+        uint64 expiry, 
+        bool isAccredited, 
+        ITradingRestrictionManager.InvestorClass investorClass,
+        bytes32 _signedRoot,
+        uint64 _rootExpiry,
+        bytes calldata _signature,
+        uint256 _nonce, 
+        uint256 _deadline,
+        bytes calldata _permitSignature
+    ) external returns (uint256, uint256, uint256) {
+        // Update merkle root in restriction manager - mandatory for all investments
+        ITradingRestrictionManager restrictionManager = getTradingRestrictionManager();
+        
+        // Update the merkle root in the restriction manager with signature validation
+        restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signature);
+        
+        // Verify investor with the updated merkle root
+        require(
+            restrictionManager.verifyInvestor(
+                proof, 
+                _beneficiary, 
+                expiry, 
+                isAccredited, 
+                investorClass
+            ),
+            "Investor verification failed"
+        );
 
-    // original function
-    // function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken) external returns (uint256, uint256, uint256) {
-    //     return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-    // }
+        // Always use Permit2 for token transfers
+        return _buyWithPermit2Tokens(
+            _beneficiary,
+            _usdToken,
+            _investedSC,
+            _nonce,
+            _deadline,
+            _permitSignature
+        );
+    }
 
     /**
       * @notice Purchase tokens using ETH
@@ -421,6 +463,64 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         public validSC(address(_usdToken)) returns (uint256, uint256, uint256)
     {
         return _buyWithTokens(_beneficiary, _investedSC, FundRaiseType.SC, _minTokens, _usdToken);
+    }
+
+    /**
+     * @notice Buy tokens using Permit2
+     * @param _beneficiary Address of the beneficiary
+     * @param _usdToken USD token address
+     * @param _investedSC Original invested amount
+     * @param _nonce Permit2 nonce
+     * @param _deadline Permit2 deadline
+     * @param _permitSignature Permit2 signature
+     * @return Investment result
+     */
+    function _buyWithPermit2Tokens(
+        address _beneficiary,
+        IERC20 _usdToken,
+        uint256 _investedSC,
+        uint256 _nonce,
+        uint256 _deadline,
+        bytes calldata _permitSignature
+    ) internal returns (uint256, uint256, uint256) {
+        // Get Permit2 contract address from PolymathRegistry
+        address permit2Contract = IPolymathRegistry(securityToken.polymathRegistry()).addressGetter("Permit2Contract");
+        require(permit2Contract != address(0), "Permit2 not configured");
+
+        (uint256 rate, uint256 spentUSD, uint256 spentValue, uint256 initialMinted) = _getSpentvalues(_beneficiary, _investedSC, FundRaiseType.SC, 0);
+
+        // Validate Permit2 parameters
+        require(_deadline > block.timestamp, "Invalid permit deadline");
+        require(_permitSignature.length > 0, "Permit signature required");
+
+        // Execute Permit2 transfer - transfer directly to wallet (not to this contract first)
+        IPermit2(permit2Contract).permitTransferFrom(
+            // The permit message. Spender is inferred as the caller (this contract)
+            ISignatureTransfer.PermitTransferFrom({
+                permitted: ISignatureTransfer.TokenPermissions({
+                    token: address(_usdToken),
+                    amount: spentValue
+                }),
+                nonce: _nonce,
+                deadline: _deadline
+            }),
+            // Transfer details
+            ISignatureTransfer.SignatureTransferDetails({
+                to: wallet,
+                requestedAmount: spentValue
+            }),
+            _beneficiary, // The owner of the tokens has to be the signer
+            _permitSignature // The resulting signature from signing hash of permit data per EIP-712 standards
+        );
+        
+        // Update storage
+        investorInvested[_beneficiary][uint8(FundRaiseType.SC)] = investorInvested[_beneficiary][uint8(FundRaiseType.SC)]+(spentValue);
+        fundsRaised[uint8(FundRaiseType.SC)] = fundsRaised[uint8(FundRaiseType.SC)]+(spentValue);
+        stableCoinsRaised[address(_usdToken)] = stableCoinsRaised[address(_usdToken)]+(spentValue);
+            
+        // Forward coins to issuer wallet
+        emit FundsReceived(msg.sender, _beneficiary, spentUSD, FundRaiseType.SC, _investedSC, spentValue, rate);
+        return (spentUSD, spentValue, getTokensMinted()-(initialMinted));
     }
 
     function _buyWithTokens(address _beneficiary, uint256 _tokenAmount, FundRaiseType _fundRaiseType, uint256 _minTokens, IERC20 _token) internal returns (uint256, uint256, uint256) {
@@ -794,6 +894,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
     function _getOracle(bytes32 _currency, bytes32 _denominatedCurrency) internal view returns(address oracleAddress) {
         oracleAddress = customOracles[_currency][_denominatedCurrency];
         if (oracleAddress == address(0))
-            oracleAddress =  IPolymathRegistry(securityToken.polymathRegistry()).getAddress(oracleKeys[_currency][_denominatedCurrency]);
+            oracleAddress =  IPolymathRegistry(securityToken.polymathRegistry()).addressGetter(oracleKeys[_currency][_denominatedCurrency]);
     }
+
 }

@@ -21,8 +21,6 @@ contract ModuleStorage {
 
     IERC20 public polyToken;
 
-    // Address used to manage KYC
-    ITradingRestrictionManager public restrictionManager;
 
     /**
      * @notice Constructor

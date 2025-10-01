@@ -265,7 +265,7 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
 
     function _updateFromRegistry() internal {
         address polymathRegistry = getAddressValue(POLYMATHREGISTRY);
-        set(POLYTOKEN, IPolymathRegistry(polymathRegistry).getAddress("PolyToken"));
+        set(POLYTOKEN, IPolymathRegistry(polymathRegistry).addressGetter("PolyToken"));
     }
 
     /**
@@ -286,7 +286,7 @@ contract SecurityTokenRegistry is EternalStorage, Proxy {
         bool isFeesInPoly = getBoolValue(IS_FEE_IN_POLY);
         uint256 rawFee = getUintValue(_feeType);
         address polymathRegistry = getAddressValue(POLYMATHREGISTRY);
-        uint256 polyRate = IOracle(IPolymathRegistry(polymathRegistry).getAddress(POLY_ORACLE)).getPrice();
+        uint256 polyRate = IOracle(IPolymathRegistry(polymathRegistry).addressGetter(POLY_ORACLE)).getPrice();
         if (!isFeesInPoly) { //Fee is in USD and not poly
             usdFee = rawFee;
             polyFee = DecimalMath.div(rawFee, polyRate);

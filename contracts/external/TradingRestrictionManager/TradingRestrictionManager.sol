@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     bytes32 private _root;
+    uint64 private _rootExpiry;
 
     constructor() {}
 
@@ -45,8 +46,65 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
      * @param root The new Merkle root hash
      */
     function modifyKYCData(bytes32 root) external onlyOperator {
+        require(root != bytes32(0), "Invalid root");
+        
+        // If this is the first time setting the root (initialization)
+        if (_root == bytes32(0)) {
+            // For initialization, set expiry to 1 week from now
+            _rootExpiry = uint64(block.timestamp + 604800); // 1 week
+        }
+        
         _root = root;
         emit MerkleRootUpdated(_root);
+    }
+
+    /**
+     * @notice Updates the Merkle root with signed data from operator
+     * @param root The new Merkle root hash
+     * @param expiry The expiry timestamp for this root
+     * @param signature The signature from the operator
+     */
+    function updateMerkleRootWithSignature(bytes32 root, uint64 expiry, bytes calldata signature) external {
+        require(root != bytes32(0), "Invalid root");
+        require(expiry >= block.timestamp, "Expiry must be in the future");
+        require(expiry >= _rootExpiry, "New expiry must be later than current");
+        require(signature.length > 0, "Signature required for merkle root update");
+        
+        // Verify the signature is from an operator
+        bytes32 messageHash = keccak256(abi.encodePacked(root, expiry));
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        address signer = _recoverSigner(ethSignedMessageHash, signature);
+        
+        require(isOperator[signer], "Signature must be from operator");
+        
+        _root = root;
+        _rootExpiry = expiry;
+        emit MerkleRootUpdated(_root);
+    }
+
+    /**
+     * @notice Recover the signer address from signature
+     * @param ethSignedMessageHash The Ethereum signed message hash
+     * @param signature The signature
+     * @return The signer address
+     */
+    function _recoverSigner(bytes32 ethSignedMessageHash, bytes memory signature) internal pure returns (address) {
+        require(signature.length == 65, "Invalid signature length");
+        
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+        
+        if (v < 27) v += 27;
+        require(v == 27 || v == 28, "Invalid signature 'v' value");
+        
+        return ecrecover(ethSignedMessageHash, v, r, s);
     }
 
     /**
@@ -147,5 +205,14 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
 
     function _past() internal view returns (uint64) {
         return uint64(block.timestamp - (1 days));
+    }
+
+    /**
+     * @notice Get the current merkle root and expiry
+     * @return root The current merkle root
+     * @return expiry The current expiry timestamp
+     */
+    function getCurrentMerkleRoot() external view returns (bytes32 root, uint64 expiry) {
+        return (_root, _rootExpiry);
     }
 }
