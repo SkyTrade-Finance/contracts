@@ -5,12 +5,33 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum/contract
-    name: USDTieredSTOFactory
-    network: base-sepolia
+    name: TradingRestrictionManager
+    network: monad-testnet
     source:
-      address: '0x8881d326b4EFdD0b854C984961e7A890ddD6dfdA'
+      address: '0x612575FdbF7ca259fF1C73bBBDD9f392755aeF31'
+      abi: TradingRestrictionManager
+      startBlock: 29339424
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      file: ./mappings/tradingRestrictionManager.ts
+      entities:
+        - MerkleRoot
+      abis:
+        - name: TradingRestrictionManager
+          file: ../../build/contracts/TradingRestrictionManager.json
+      eventHandlers:
+        - event: MerkleRootUpdated(bytes32)
+          handler: handleMerkleRootUpdated
+
+  - kind: ethereum/contract
+    name: USDTieredSTOFactory
+    network: monad-testnet
+    source:
+      address: '0xd424E85a79d57037eec44d51126220738aFb0573'
       abi: USDTieredSTOFactory
-      startBlock: 25142624
+      startBlock: 29339424
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -27,11 +48,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: ERC20DividendCheckpointFactory
-    network: base-sepolia
+    network: monad-testnet
     source:
-      address: '0x8259199b484aa93BDC2aeDBA09c2b280b5178d9A'
+      address: '0xBFE7724f5279d008DC9110E10f2A222C62e0D5CB'
       abi: ERC20DividendCheckpointFactory
-      startBlock: 25142624
+      startBlock: 29339424
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -48,11 +69,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GeneralTransferManagerFactory
-    network: base-sepolia
+    network: monad-testnet
     source:
-      address: '0x1353C029C8Dc12Dce91789feBCD5d1fE6035bc1E'
+      address: '0x1dE4e9F8f816b814F6794058167e433952f6bA62'
       abi: GeneralTransferManagerFactory
-      startBlock: 25142624
+      startBlock: 29339424
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -69,11 +90,11 @@ dataSources:
           
   - kind: ethereum/contract
     name: SecurityTokenRegistry
-    network: base-sepolia
+    network: monad-testnet
     source:
-      address: '0x95912acEeafC651Ac3575255421c3ddB797A5233'
+      address: '0xAC28c0be35b7BD13269aE04FB46e09C7c68d4564'
       abi: SecurityTokenRegistry
-      startBlock: 25142624
+      startBlock: 29339424
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -92,7 +113,7 @@ dataSources:
 templates:
   - name: USDTieredSTO
     kind: ethereum/contract
-    network: base-sepolia
+    network: monad-testnet
     source:
       abi: USDTieredSTO
     mapping:
@@ -105,13 +126,17 @@ templates:
       abis:
         - name: USDTieredSTO
           file: ../../build/contracts/USDTieredSTO.json
+        - name: ERC20
+          file: ../../build/contracts/SecurityToken.json
       eventHandlers:
         - event: TokenPurchase(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleTokenPurchase
+        - event: SetAddresses(indexed address,address[])
+          handler: handleSetAddresses
 
   - name: ERC20DividendCheckpoint
     kind: ethereum/contract
-    network: base-sepolia
+    network: monad-testnet
     source:
       abi: ERC20DividendCheckpoint
     mapping:
@@ -126,6 +151,8 @@ templates:
       abis:
         - name: ERC20DividendCheckpoint
           file: ../../build/contracts/ERC20DividendCheckpoint.json
+        - name: ERC20
+          file: ../../build/contracts/SecurityToken.json
       eventHandlers:
         - event: ERC20DividendDeposited(indexed address,uint256,uint256,uint256,indexed address,uint256,uint256,uint256,indexed bytes32)
           handler: handleDividendCreation
@@ -134,7 +161,7 @@ templates:
 
   - name: SecurityToken
     kind: ethereum/contract
-    network: base-sepolia
+    network: monad-testnet
     source:
       abi: SecurityToken
     mapping:

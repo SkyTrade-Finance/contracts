@@ -9,7 +9,6 @@ import "./USDTieredSTOStorage.sol";
 import "../../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
 import "../../../interfaces/IPermit2.sol";
 
-
 /**
  * @title STO module for standard capped crowdsale
  */
@@ -364,6 +363,19 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         return buyWithPOLYRateLimited(_beneficiary, _investedPOLY, 0);
     }
 
+    // function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken, bytes32[] calldata proof, uint64 expiry, bool isAccredited, ITradingRestrictionManager.InvestorClass investorClass) external returns (uint256, uint256, uint256) {
+    //     ITradingRestrictionManager restrictionManager = getTradingRestrictionManager();
+    //     if (address(restrictionManager) == address(0)) {    
+    //         return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+    //     } else {
+    //         require (
+    //             ITradingRestrictionManager(restrictionManager).verifyInvestor(proof, _beneficiary, expiry, isAccredited, investorClass),
+    //             "Investor verification failed"
+    //         );
+    //         return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+    //     }
+    // }
+
     /**
      * @notice Purchase tokens using USD with optional Permit2 support
      * @param _beneficiary Address where security tokens will be sent
@@ -395,33 +407,43 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         uint256 _deadline,
         bytes calldata _permitSignature
     ) external returns (uint256, uint256, uint256) {
-        // Update merkle root in restriction manager - mandatory for all investments
         ITradingRestrictionManager restrictionManager = getTradingRestrictionManager();
-        
-        // Update the merkle root in the restriction manager with signature validation
+
+        // If no TradingRestrictionManager is configured, allow legacy flow
+        if (address(restrictionManager) == address(0)) {
+            // Only attempt Permit2 if a signature was provided and not expired
+            bool hasPermit = _permitSignature.length > 0 && _deadline > block.timestamp;
+            if (hasPermit) {
+                address permit2Contract = IPolymathRegistry(securityToken.polymathRegistry()).addressGetter("Permit2Contract");
+                if (permit2Contract != address(0)) {
+                    return _buyWithPermit2Tokens(_beneficiary, _usdToken, _investedSC, _nonce, _deadline, _permitSignature);
+                }
+            }
+            return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
+        }
+
+        // With TradingRestrictionManager set, enforce merkle root update + verification
         restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signature);
-        
-        // Verify investor with the updated merkle root
         require(
             restrictionManager.verifyInvestor(
-                proof, 
-                _beneficiary, 
-                expiry, 
-                isAccredited, 
+                proof,
+                _beneficiary,
+                expiry,
+                isAccredited,
                 investorClass
             ),
             "Investor verification failed"
         );
 
-        // Always use Permit2 for token transfers
-        return _buyWithPermit2Tokens(
-            _beneficiary,
-            _usdToken,
-            _investedSC,
-            _nonce,
-            _deadline,
-            _permitSignature
-        );
+        // Prefer Permit2 if properly configured, else use standard transferFrom path
+        // Use Permit2 only when a valid signature is provided
+        if (_permitSignature.length > 0 && _deadline > block.timestamp) {
+            address permit2 = IPolymathRegistry(securityToken.polymathRegistry()).addressGetter("Permit2Contract");
+            if (permit2 != address(0)) {
+            return _buyWithPermit2Tokens(_beneficiary, _usdToken, _investedSC, _nonce, _deadline, _permitSignature);
+            }
+        }
+        return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
     }
 
     /**
@@ -896,5 +918,4 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         if (oracleAddress == address(0))
             oracleAddress =  IPolymathRegistry(securityToken.polymathRegistry()).addressGetter(oracleKeys[_currency][_denominatedCurrency]);
     }
-
 }

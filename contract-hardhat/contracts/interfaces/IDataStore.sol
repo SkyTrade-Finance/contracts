@@ -97,6 +97,8 @@ interface IDataStore {
 
     function getAddress(bytes32 _key) external view returns(address);
 
+    function addressGetter(bytes32 _key) external view returns(address);
+
     function getString(bytes32 _key) external view returns(string memory);
 
     function getBytes(bytes32 _key) external view returns(bytes memory);

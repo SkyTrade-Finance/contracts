@@ -238,6 +238,10 @@ contract DataStore is DataStoreStorage, IDataStore {
         return addressData[_key];
     }
 
+    function addressGetter(bytes32 _key) external view returns(address) {
+        return addressData[_key];
+    }
+
     function getString(bytes32 _key) external view returns(string memory) {
         return stringData[_key];
     }
