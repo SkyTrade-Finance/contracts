@@ -4,7 +4,6 @@ pragma solidity 0.8.30;
 import "./ITradingRestrictionManager.sol";
 import "../../libraries/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "hardhat/console.sol";
 
 contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     bytes32 private _root;
@@ -179,7 +178,6 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
 
         InvestorKYCData memory kyc = _kycData[investor];
         uint64 startTime = tokenLockStartTime[token];
-        console.log(startTime, "startTime");
 
         if (startTime == 0) {
             return (_future(), _future(), kyc.expiryTime, 1);
@@ -192,14 +190,6 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
         uint64 unlockTime = startTime + restrictionPeriod;
         uint64 sendAfter = block.timestamp >= unlockTime ? _past() : unlockTime;
         uint64 receiveAfter = block.timestamp <= startTime ? _past() : sendAfter;
-
-        console.log(block.timestamp, "block.timestamp");
-        console.log(startTime, "startTime");
-        console.log(restrictionPeriod, "restrictionPeriod");
-
-        console.log(unlockTime, "unlockTime");
-        console.log(sendAfter, "sendAfter");
-        console.log(receiveAfter, "receiveAfter");
 
         return (
             sendAfter,

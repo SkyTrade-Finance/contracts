@@ -8,8 +8,6 @@ import "../../../libraries/DecimalMath.sol";
 import "./USDTieredSTOStorage.sol";
 import "../../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
 import "../../../interfaces/IPermit2.sol";
-import "hardhat/console.sol";
-
 
 /**
  * @title STO module for standard capped crowdsale
