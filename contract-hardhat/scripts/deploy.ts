@@ -30,8 +30,12 @@ async function main() {
   await PolymathRegistry.waitForDeployment();
   // @ts-ignore
   const PolymathRegistryContractAddress = await PolymathRegistry.getAddress();
-
   console.log({ PolymathRegistryContractAddress })
+
+  const Permit2 = await ethers.deployContract("Permit2", deployer);
+  await Permit2.waitForDeployment();
+  const permit2ContractAddress = await Permit2.getAddress();
+  console.log({ permit2ContractAddress }, "permit2ContractAddress");
 
   const ModuleRegistry = await ethers.deployContract("ModuleRegistry", deployer);
   await ModuleRegistry.waitForDeployment();
@@ -90,17 +94,24 @@ async function main() {
   
   await polymathRegistry.changeAddress("PolyToken", PolyToken)
 
+  // Set Permit2Contract in PolymathRegistry
+  await polymathRegistry.changeAddress("Permit2Contract", permit2ContractAddress);
+  console.log("Permit2Contract registered in PolymathRegistry with address:", permit2ContractAddress);
+
+  // Set TradingRestrictionManager in PolymathRegistry
+  await polymathRegistry.changeAddress("TradingRestrictionManager", TradingRestrictionManagerContractAddress);
+  console.log("TradingRestrictionManager registered in PolymathRegistry");
+
+  // Grant operator role to the deployer for TradingRestrictionManager
+  await TradingRestrictionManager.grantOperator(OWNER_ADDRESS);
+  console.log("Operator role granted to deployer for TradingRestrictionManager");
+
   const TokenLib = await ethers.deployContract("TokenLib", deployer);
   await TokenLib.waitForDeployment();
   const TokenLibContractAddress = await TokenLib.getAddress();
 
   console.log({ TokenLibContractAddress })
 
-  const VolumeRestrictionLib = await ethers.deployContract("VolumeRestrictionLib", deployer);
-  await VolumeRestrictionLib.waitForDeployment();
-  const VolumeRestrictionLibContractAddress = await VolumeRestrictionLib.getAddress();
-
-  console.log({ VolumeRestrictionLibContractAddress })
 
   const ModuleRegistryProxy = await ethers.deployContract("ModuleRegistryProxy", deployer);
   await ModuleRegistryProxy.waitForDeployment();
@@ -120,26 +131,6 @@ async function main() {
   const GeneralTransferManagerLogicContractAddress = await GeneralTransferManagerLogic.getAddress();
   console.log({ GeneralTransferManagerLogicContractAddress })
 
-  const GeneralPermissionManagerLogic = await ethers.deployContract("GeneralPermissionManager", [nullAddress, nullAddress,], deployer);
-  await GeneralPermissionManagerLogic.waitForDeployment();
-  const GeneralPermissionManagerLogicContractAddress = await GeneralPermissionManagerLogic.getAddress();
-  console.log({ GeneralPermissionManagerLogicContractAddress })
-  
-  const CountTransferManagerLogic = await ethers.deployContract("CountTransferManager", [nullAddress, nullAddress,], deployer);
-  await CountTransferManagerLogic.waitForDeployment();
-  const CountTransferManagerLogicContractAddress = await CountTransferManagerLogic.getAddress();
-  console.log({ CountTransferManagerLogicContractAddress })
-
-  const ManualApprovalTransferManagerLogic = await ethers.deployContract("ManualApprovalTransferManager", [nullAddress, nullAddress,], deployer);
-  await ManualApprovalTransferManagerLogic.waitForDeployment();
-  const ManualApprovalTransferManagerLogicContractAddress = await ManualApprovalTransferManagerLogic.getAddress();
-  console.log({ ManualApprovalTransferManagerLogicContractAddress })
-
-  const PercentageTransferManagerLogic = await ethers.deployContract("PercentageTransferManager", [nullAddress, nullAddress,], deployer);
-  await PercentageTransferManagerLogic.waitForDeployment();
-  const PercentageTransferManagerLogicContractAddress = await PercentageTransferManagerLogic.getAddress();
-  console.log({ PercentageTransferManagerLogicContractAddress })
-  
   const ERC20DividendCheckpointLogic = await ethers.deployContract("ERC20DividendCheckpoint", [nullAddress, nullAddress,], deployer);
   await ERC20DividendCheckpointLogic.waitForDeployment();
   const ERC20DividendCheckpointLogicContractAddress = await ERC20DividendCheckpointLogic.getAddress();
@@ -154,29 +145,6 @@ async function main() {
   await USDTieredSTOLogic.waitForDeployment();
   const USDTieredSTOLogicContractAddress = await USDTieredSTOLogic.getAddress();
   console.log({ USDTieredSTOLogicContractAddress })
-
-
-  const VolumeRestrictionTMLogic= await ethers.getContractFactory("VolumeRestrictionTM",  { 
-    signer: deployer, 
-    libraries: { 
-      VolumeRestrictionLib: VolumeRestrictionLibContractAddress
-    } 
-  });
-  const volumeRestrictionTMLogic = await VolumeRestrictionTMLogic.deploy(nullAddress, nullAddress);
-  const volumeRestrictionTMLogicContractAddress = await volumeRestrictionTMLogic.getAddress();
-
-  console.log({volumeRestrictionTMLogicContractAddress})
-  
-  const CappedSTOLogic = await ethers.deployContract("CappedSTO", [nullAddress, nullAddress], deployer);
-  await CappedSTOLogic.waitForDeployment();
-  const CappedSTOLogicContractAddress = await CappedSTOLogic.getAddress();
-  
-  console.log({CappedSTOLogicContractAddress})
-  
-  const VestingEscrowWalletLogic = await ethers.deployContract("VestingEscrowWallet", [nullAddress, nullAddress], deployer);
-  await VestingEscrowWalletLogic.waitForDeployment();
-  const VestingEscrowWalletLogicContractAddress = await VestingEscrowWalletLogic.getAddress();
-  console.log({VestingEscrowWalletLogicContractAddress})
 
   
   const DataStoreLogic = await ethers.deployContract("DataStore", deployer);
@@ -206,21 +174,6 @@ async function main() {
   const GeneralTransferManagerFactoryContractAddress = await GeneralTransferManagerFactory.getAddress();
   console.log({GeneralTransferManagerFactoryContractAddress})
 
-  const GeneralPermissionManagerFactory = await ethers.deployContract("GeneralPermissionManagerFactory", [0, GeneralPermissionManagerLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await GeneralPermissionManagerFactory.waitForDeployment();
-  const GeneralPermissionManagerFactoryContractAddress = await GeneralPermissionManagerFactory.getAddress();
-  console.log({GeneralPermissionManagerFactoryContractAddress})
-
-  const CountTransferManagerFactory = await ethers.deployContract("CountTransferManagerFactory", [0, CountTransferManagerLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await CountTransferManagerFactory.waitForDeployment();
-  const CountTransferManagerFactoryContractAddress = await CountTransferManagerFactory.getAddress();
-  console.log({CountTransferManagerFactoryContractAddress})
-
-  const PercentageTransferManagerFactory = await ethers.deployContract("PercentageTransferManagerFactory", [0, PercentageTransferManagerLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await PercentageTransferManagerFactory.waitForDeployment();
-  const PercentageTransferManagerFactoryContractAddress = await PercentageTransferManagerFactory.getAddress();
-  console.log({PercentageTransferManagerFactoryContractAddress})
-
   const EtherDividendCheckpointFactory = await ethers.deployContract("EtherDividendCheckpointFactory", [0, EtherDividendCheckpointLogicContractAddress, PolymathRegistryContractAddress], deployer);
   await EtherDividendCheckpointFactory.waitForDeployment();
   const EtherDividendCheckpointFactoryContractAddress = await EtherDividendCheckpointFactory.getAddress();
@@ -230,21 +183,6 @@ async function main() {
   await ERC20DividendCheckpointFactory.waitForDeployment();
   const ERC20DividendCheckpointFactoryContractAddress = await ERC20DividendCheckpointFactory.getAddress();
   console.log({ERC20DividendCheckpointFactoryContractAddress})
-
-  const VolumeRestrictionTMFactory = await ethers.deployContract("VolumeRestrictionTMFactory", [0, volumeRestrictionTMLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await VolumeRestrictionTMFactory.waitForDeployment();
-  const VolumeRestrictionTMFactoryContractAddress = await VolumeRestrictionTMFactory.getAddress();
-  console.log({VolumeRestrictionTMFactoryContractAddress})
-
-  const ManualApprovalTransferManagerFactory = await ethers.deployContract("ManualApprovalTransferManagerFactory", [0, ManualApprovalTransferManagerLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await ManualApprovalTransferManagerFactory.waitForDeployment();
-  const ManualApprovalTransferManagerFactoryContractAddress = await ManualApprovalTransferManagerFactory.getAddress();
-  console.log({ManualApprovalTransferManagerFactoryContractAddress})
-
-  const VestingEscrowWalletFactory = await ethers.deployContract("VestingEscrowWalletFactory", [0, VestingEscrowWalletLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await VestingEscrowWalletFactory.waitForDeployment();
-  const VestingEscrowWalletFactoryContractAddress = await VestingEscrowWalletFactory.getAddress();
-  console.log({VestingEscrowWalletFactoryContractAddress})
 
   const STGetter = await ethers.getContractFactory("STGetter",  { 
     signer: deployer, 
@@ -259,7 +197,6 @@ async function main() {
 
   let tokenInitBytesCall = web3.eth.abi.encodeFunctionCall(tokenInitBytes, [STGetterContractAddress]);
   console.log({tokenInitBytesCall})
-  
 
 
   const STFactory = await ethers.deployContract("STFactory", [PolymathRegistryContractAddress, GeneralTransferManagerFactoryContractAddress, DataStoreFactoryContractAddress, "3.0.0", SecurityTokenLogicContractAddress, tokenInitBytesCall], deployer);
@@ -289,7 +226,6 @@ async function main() {
   const STRGetterContractAddress = await STRGetter.getAddress();
   console.log({STRGetterContractAddress})
 
-
   const initRegFee = 0;
 
   let bytesProxy = web3.eth.abi.encodeFunctionCall(functionSignatureProxy, [
@@ -316,33 +252,14 @@ async function main() {
   
   await moduleRegistry.updateFromRegistry()
   
-  await moduleRegistry.registerModule(PercentageTransferManagerFactoryContractAddress)
-  await moduleRegistry.registerModule(CountTransferManagerFactoryContractAddress)
   await moduleRegistry.registerModule(GeneralTransferManagerFactoryContractAddress)
-  await moduleRegistry.registerModule(GeneralPermissionManagerFactoryContractAddress)
   await moduleRegistry.registerModule(EtherDividendCheckpointFactoryContractAddress)
-  await moduleRegistry.registerModule(VolumeRestrictionTMFactoryContractAddress)
-  await moduleRegistry.registerModule(ManualApprovalTransferManagerFactoryContractAddress)
   await moduleRegistry.registerModule(ERC20DividendCheckpointFactoryContractAddress)
-  await moduleRegistry.registerModule(VestingEscrowWalletFactoryContractAddress)
   
   await moduleRegistry.verifyModule(GeneralTransferManagerFactoryContractAddress)
-  await moduleRegistry.verifyModule(CountTransferManagerFactoryContractAddress)
-  await moduleRegistry.verifyModule(PercentageTransferManagerFactoryContractAddress)
-  await moduleRegistry.verifyModule(GeneralPermissionManagerFactoryContractAddress)
   await moduleRegistry.verifyModule(EtherDividendCheckpointFactoryContractAddress)
   await moduleRegistry.verifyModule(ERC20DividendCheckpointFactoryContractAddress)
-  await moduleRegistry.verifyModule(VolumeRestrictionTMFactoryContractAddress,)
-  await moduleRegistry.verifyModule(ManualApprovalTransferManagerFactoryContractAddress)
-  await moduleRegistry.verifyModule(VestingEscrowWalletFactoryContractAddress)
 
-  const CappedSTOFactory = await ethers.deployContract("CappedSTOFactory", [0, CappedSTOLogicContractAddress, PolymathRegistryContractAddress], deployer);
-  await CappedSTOFactory.waitForDeployment();
-  const CappedSTOFactoryContractAddress = await CappedSTOFactory.getAddress();
-  console.log({CappedSTOFactoryContractAddress})
-
-  await moduleRegistry.registerModule(CappedSTOFactoryContractAddress)
-  await moduleRegistry.verifyModule(CappedSTOFactoryContractAddress)
 
   const USDTieredSTOFactory = await ethers.deployContract("USDTieredSTOFactory", [0, USDTieredSTOLogicContractAddress, PolymathRegistryContractAddress], deployer);
   await USDTieredSTOFactory.waitForDeployment();
@@ -356,6 +273,23 @@ async function main() {
   await polymathRegistry.changeAddress("PolyUsdOracle", PolyMockOracleContractAddress);
   await polymathRegistry.changeAddress("EthUsdOracle", ETHOracleContractAddress);
   await polymathRegistry.changeAddress("StablePolyUsdOracle", StableOracleContractAddress);
+
+  const DummyERC20 = await ethers.deployContract("DummyERC20", ["Dai Token", "DAI", "18"], deployer);
+  await DummyERC20.waitForDeployment();
+  const DummyERC20ContractAddress = await DummyERC20.getAddress();
+
+  console.log({DummyERC20ContractAddress})
+  
+  console.log("\n=== Deployment Summary ===");
+  console.log("PolymathRegistry:", PolymathRegistryContractAddress);
+  console.log("TradingRestrictionManager:", TradingRestrictionManagerContractAddress);
+  console.log("ModuleRegistry:", ModuleRegistryProxyContractAddress);
+  console.log("SecurityTokenRegistry:", SecurityTokenRegistryProxyContractAddress);
+  console.log("STFactory:", STFactoryContractAddress);
+  console.log("USDTieredSTOFactory:", USDTieredSTOFactoryContractAddress);
+  console.log("FeatureRegistry:", FeatureRegistryContractAddress);
+  console.log("\nAll contracts deployed and configured successfully!");
+  console.log("\nTradingRestrictionManager is now registered in PolymathRegistry and ready for Merkle root operations.");
   
 }
 

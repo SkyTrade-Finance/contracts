@@ -17,7 +17,7 @@ contract PolymathRegistry is ReclaimTokens, IPolymathRegistry {
      */
     function addressGetter(string calldata _nameKey) external view returns(address) {
         bytes32 key = keccak256(bytes(_nameKey));
-        require(storedAddresses[key] != address(0), "Invalid key");
+        require(storedAddresses[key] != address(0) || keccak256(bytes(_nameKey)) == keccak256(bytes("TradingRestrictionManager")), "Invalid key");
         return storedAddresses[key];
     }
 

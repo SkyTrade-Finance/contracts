@@ -6,10 +6,11 @@ import {
   AccountUser as AccountUserSchema,
   UserDividend,
 } from "../../generated/schema"
-import { ERC20DividendCheckpoint, ERC20DividendClaimed as ERC20DividendClaimedEvent, ERC20DividendDeposited, ERC20DividendDeposited as ERC20DividendDepositedEvent } from "../../generated/templates/ERC20DividendCheckpoint/ERC20DividendCheckpoint";
+import { ERC20DividendCheckpoint, ERC20DividendClaimed as ERC20DividendClaimedEvent, ERC20DividendDeposited as ERC20DividendDepositedEvent } from "../../generated/templates/ERC20DividendCheckpoint/ERC20DividendCheckpoint";
+import { ERC20 } from "../../generated/templates/ERC20DividendCheckpoint/ERC20";
 import { CHANNEL_ADDRESS } from "../constant";
 import { sendPushNotification } from "../helpers/pushNotification";
-import { Address, BigInt } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
 
 function notifyUsers(): void {
   const title = "Rent Generated Alerts";
@@ -56,12 +57,15 @@ export function handleDividendCreation(event: ERC20DividendDepositedEvent): void
   const users = accountUsers.user;
 
   const totalSupply = dividendContract.dividends(event.params._dividendIndex).getTotalSupply();
+  const paymentTokenContract = ERC20.bind(Address.fromString(token));
+  const claimTokenDecimal = BigInt.fromI32(paymentTokenContract.decimals());
 
 
   for (let i = 0; i < users.length; i++) {
     let user = users[i];
 
     const dividend = dividendContract.calculateDividend(event.params._dividendIndex, Address.fromString(user));
+    const claim = dividend.getValue0();
 
     let userDividendId = user + "-" + token + "-" + event.params._dividendIndex.toString();
 
@@ -73,10 +77,11 @@ export function handleDividendCreation(event: ERC20DividendDepositedEvent): void
     }
 
     userDividend.creationUnixTimestamp = event.block.timestamp;
-    userDividend.transactionHash = event.transaction.hash;
-    userDividend.totalClaimableAmount = dividend.getValue0();
-    userDividend.claim = dividend.getValue0();
+    userDividend.transactionHash = new Bytes(0);
+    userDividend.totalClaimableAmount = claim;
+    userDividend.claim = claim;
     userDividend.withheld = dividend.getValue1();
+    userDividend.claimTokenDecimal = claimTokenDecimal;
     userDividend.token = token;
     userDividend.user = user;
 
@@ -121,7 +126,6 @@ export function handleDividendCreation(event: ERC20DividendDepositedEvent): void
 
 export function handleDividendClaim(event: ERC20DividendClaimedEvent): void {
   const id = event.transaction.hash.toHex();
-  const dividendContract = ERC20DividendCheckpoint.bind(event.address);
 
   let entity = new ERC20DividendClaimedSchema(id);
 
@@ -129,53 +133,24 @@ export function handleDividendClaim(event: ERC20DividendClaimedEvent): void {
 
   let token = erc20DividendCheckpointFactory.creator.toHex();
 
-  let accountUsers = AccountUserSchema.load(token);
+  const user = event.params._payee.toHex();
 
-  if (!accountUsers) {
-    accountUsers = new AccountUserSchema(token);
-  }
+  let userDividendId = user + "-" + token + "-" + event.params._dividendIndex.toString();
 
-  const users = accountUsers.user;
+  let userDividend = UserDividend.load(userDividendId);
 
+  if (userDividend) {
+    const claim = userDividend.claim.minus(event.params._amount);
 
-  for (let i = 0; i < users.length; i++) {
-    let user = users[i];
+    userDividend.creationUnixTimestamp = event.block.timestamp;
+    userDividend.transactionHash = event.transaction.hash;
 
-    const dividend = dividendContract.calculateDividend(event.params._dividendIndex, Address.fromString(user));
+    userDividend.claim = claim;
 
-    let userDividendId = user + "-" + token + "-" + event.params._dividendIndex.toString();
+    userDividend.save();
 
+  } 
 
-    let userDividend = UserDividend.load(userDividendId);
-
-    if (userDividend) {
-      userDividend.creationUnixTimestamp = event.block.timestamp;
-      userDividend.transactionHash = event.transaction.hash;
-
-      // Intentional skip userDividend.totalClaimableAmount = dividend.getValue0();
-      userDividend.claim = dividend.getValue0();
-      userDividend.withheld = dividend.getValue1();
-      userDividend.token = token;
-      userDividend.user = user;
-
-      userDividend.save();
-    } else {
-      userDividend = new UserDividend(userDividendId);
-      
-
-      userDividend.creationUnixTimestamp = event.block.timestamp;
-      userDividend.transactionHash = event.transaction.hash;
-      userDividend.totalClaimableAmount = dividend.getValue0();
-
-      userDividend.claim = dividend.getValue0();
-      userDividend.withheld = dividend.getValue1();
-      userDividend.token = token;
-      userDividend.user = user;
-
-      userDividend.save();
-    }
-
-  }
 
   entity.payee = event.params._payee.toHex();
   entity.dividendIndex = event.params._dividendIndex;
