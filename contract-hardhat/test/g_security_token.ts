@@ -13,15 +13,28 @@ import {
     setUpPolymathNetwork,
     deployGPMAndVerifyed,
 } from "./helpers/createInstances";
+import { TOKEN_CONFIG, MODULE_KEYS, InvestorClass, FEE_CONSTANTS, COMMON_ADDRESSES } from "./helpers/testConstants";
 
+/**
+ * SecurityToken Test Suite
+ * 
+ * Tests the SecurityToken contract which is the core token implementation
+ * for the Polymath ecosystem, handling token issuance, transfers, and module management.
+ * 
+ * Tests cover:
+ * - Token issuance and burning
+ * - Transfer restrictions and compliance
+ * - Module attachment and management
+ * - Controller functionality
+ * - Access control and permissions
+ * - Edge cases and error conditions
+ */
 describe("SecurityToken", function() {
-    // Accounts Variable declaration
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
     let account_investor1: HardhatEthersSigner;
     let account_issuer: HardhatEthersSigner;
     let token_owner: HardhatEthersSigner;
-    let disableControllerAckHash: string;
-    let freezeIssuanceAckHash: string;
     let account_investor2: HardhatEthersSigner;
     let account_investor3: HardhatEthersSigner;
     let account_affiliate1: HardhatEthersSigner;
@@ -31,21 +44,23 @@ describe("SecurityToken", function() {
     let account_temp: HardhatEthersSigner;
     let account_controller: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
-    const address_zero = ethers.ZeroAddress;
-    const one_address = "0x0000000000000000000000000000000000000001";
 
-    let balanceOfReceiver: bigint;
-    // investor Details
+    // ============ Time Variables ============
     let fromTime: number;
     let toTime: number;
     let expiryTime: number;
 
+    // ============ Test Constants ============
+    let disableControllerAckHash: string;
+    let freezeIssuanceAckHash: string;
+    let balanceOfReceiver: bigint;
     let ID_snap: string;
     const message = "Transaction Should Fail!!";
     const uri = "https://www.gogl.bts.fly";
     const docHash = ethers.encodeBytes32String("hello");
-
     const empty_hash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    const address_zero = COMMON_ADDRESSES.ZERO;
+    const one_address = COMMON_ADDRESSES.ONE;
 
     // Contract Instance Declaration
     let I_GeneralPermissionManagerFactory: any;
@@ -72,21 +87,21 @@ describe("SecurityToken", function() {
     let I_STGetter2: any;
     let stGetter: any;
 
-    // SecurityToken Details (Launched ST on the behalf of the issuer)
-    const name = "Demo Token";
-    const symbol = "DET";
-    const tokenDetails = "This is equity type of issuance";
-    const decimals = 18;
+    // ============ Test Configuration ============
+    const name = TOKEN_CONFIG.name;
+    const symbol = TOKEN_CONFIG.symbol;
+    const tokenDetails = TOKEN_CONFIG.tokenDetails;
+    const decimals = TOKEN_CONFIG.decimals;
     let snap_Id: string;
-    // Module key
-    const permissionManagerKey = 1;
-    const transferManagerKey = 2;
-    const stoKey = 3;
+    
+    const permissionManagerKey = MODULE_KEYS.DELEGATE_MANAGER;
+    const transferManagerKey = MODULE_KEYS.TRANSFER_MANAGER;
+    const stoKey = MODULE_KEYS.STO;
     const burnKey = 5;
     const budget = 0;
 
     // Initial fee for ticker registry and security token registry
-    const initRegFee = ethers.parseEther("1000");
+    const initRegFee = FEE_CONSTANTS.INIT_REG_FEE;
 
     // delagate details
     const delegateDetails = ethers.encodeBytes32String("I am delegate ..");

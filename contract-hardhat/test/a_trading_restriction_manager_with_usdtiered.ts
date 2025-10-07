@@ -2,13 +2,14 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { Contract, ContractFactory, LogDescription, TypedDataDomain, TypedDataField } from "ethers";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import { latestTime } from "./helpers/latestTime";
 import { duration } from "./helpers/utils";
 import { deployERC20DividendAndVerifyed, deployGPMAndVerifyed, deployUSDTieredSTOAndVerified, setUpPolymathNetwork } from "./helpers/createInstances";
 import { initializeContracts } from "../scripts/polymath-deploy";
-import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { TOKEN_CONFIG, MODULE_KEYS, InvestorClass, FEE_CONSTANTS } from "./helpers/testConstants";
 
 const functionSignature = {
         name: "configure",
@@ -98,8 +99,22 @@ import { encodeModuleCall, generateMerkleRootSignature } from "./helpers/encodeC
 import { generatePermit2Data } from "./helpers/permit2Utils";
 import { PERMIT2_ADDRESS, PermitTransferFrom } from "@uniswap/permit2-sdk";
 
-describe("Trading restriction Manager", function() {
-    // Accounts Variable declaration
+/**
+ * TradingRestrictionManager with USD Tiered STO Test Suite
+ * 
+ * This comprehensive test suite validates the integration between TradingRestrictionManager
+ * and USD Tiered STO modules, ensuring proper investor verification and trading restrictions
+ * during security token offerings.
+ * 
+ * Tests cover:
+ * - Investor whitelisting and verification during STO
+ * - Trading restrictions based on geographic location and accreditation
+ * - STO configuration and investment limits
+ * - Integration with Permit2 for token approvals
+ * - Edge cases and error conditions
+ */
+describe("TradingRestrictionManager with USD Tiered STO", function() {
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
     let account_issuer: HardhatEthersSigner;
     let token_owner: HardhatEthersSigner;
@@ -110,15 +125,21 @@ describe("Trading restriction Manager", function() {
     let account_controller: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
 
-    const message = "Transaction Should Fail!";
-    const dividendName = "0x546573744469766964656e640000000000000000000000000000000000000000";
-
-    // investor Details
+    // ============ Time Variables ============
     let fromTime: number;
     let toTime: number;
     let expiryTime: number;
+    let ltime: number;
+    let startTime: number;
+    let endTime: number;
 
-    // Contract Instance Declaration
+    // ============ Test Constants ============
+    const message = "Transaction Should Fail!";
+    const dividendName = "0x546573744469766964656e640000000000000000000000000000000000000000";
+    const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+    const ONE_YEAR_IN_SECONDS = 365 * ONE_DAY_IN_SECONDS;
+
+    // ============ Contract Instances ============
     let I_GeneralPermissionManagerFactory: Contract;
     let I_SecurityTokenRegistryProxy: SecurityTokenRegistryProxy;
     let I_GeneralTransferManagerFactory: GeneralTransferManagerFactory;
@@ -148,44 +169,32 @@ describe("Trading restriction Manager", function() {
     let I_ERC20DividendCheckpointFactory: any;
     let I_ERC20DividendCheckpoint: any;
 
-    let merkleTree;
-    let merkleRoot;
-    let proof1;
-    let proof2;
-    let proof3;
-    let proof4;
-    let ltime;
-    let isAccredited1;
-    let isAccredited2;
+    // ============ Merkle Tree Variables ============
+    let merkleTree: any;
+    let merkleRoot: string;
+    let proof1: string[];
+    let proof2: string[];
+    let proof3: string[];
+    let proof4: string[];
+    let signa: string;
+    let isAccredited1: boolean;
+    let isAccredited2: boolean;
 
-    // Helper to increase blockchain time
-    const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
-    const ONE_YEAR_IN_SECONDS = 365 * ONE_DAY_IN_SECONDS;
-
-    const InvestorClass = {
-        NonUS: 0,
-        US: 1
-    };
-
-    // Contract factories
+    // ============ Contract Factories ============
     let SecurityToken: ContractFactory;
     let GeneralTransferManager: ContractFactory;
     let STGetter: ContractFactory;
 
-    // SecurityToken Details
-    const name = "Team";
-    const symbol = "SAP";
-    const tokenDetails = "This is equity type of issuance";
-    const decimals = 18;
-    const contact = "team@polymath.network";
-
-    // Module key
-    const delegateManagerKey = 1;
-    const transferManagerKey = 2;
-    const stoKey = 3;
+    // ============ Test Configuration ============
+    const name = TOKEN_CONFIG.name;
+    const symbol = TOKEN_CONFIG.symbol;
+    const tokenDetails = TOKEN_CONFIG.tokenDetails;
+    const decimals = TOKEN_CONFIG.decimals;
+    const contact = TOKEN_CONFIG.contact;
+    const stoKey = MODULE_KEYS.STO;
 
     // Initial fee for ticker registry and security token registry
-    const initRegFee = ethers.parseEther("1000");
+    const initRegFee = FEE_CONSTANTS.INIT_REG_FEE;
 
     // STO Configuration Arrays
     let _startTime: bigint[] = [];
@@ -223,8 +232,6 @@ describe("Trading restriction Manager", function() {
     // MockOracle USD prices
     let USDETH: bigint; // 500 USD/ETH
     let USDPOLY: bigint; // 0.25 USD/POLY
-
-    let signa: string;
 
     const DividendParameters = ["address"];
     const checkpointKey = 4;
@@ -463,7 +470,7 @@ describe("Trading restriction Manager", function() {
         });
 
         it("Should initialize the auto attached modules", async () => {
-            const moduleData: string[] = await stGetter.getModulesByType(transferManagerKey);
+            const moduleData: string[] = await stGetter.getModulesByType(MODULE_KEYS.TRANSFER_MANAGER);
 
             I_GeneralTransferManager = GeneralTransferManager.attach(moduleData[0]);
         });
@@ -587,13 +594,8 @@ describe("Trading restriction Manager", function() {
         // });
 
         it("should set permit2", async () => {
-            // Always use MockPermit2 locally to avoid external dependency
-            const MockPermit2 = await ethers.getContractFactory("MockPermit2");
-            I_Permit2 = await MockPermit2.connect(account_polymath).deploy();
-            await I_Permit2.waitForDeployment();
-            PERMIT2_FOR_RUNTIME = await I_Permit2.getAddress();
-
-            await I_PolymathRegistry.connect(account_polymath).changeAddress("Permit2Contract", PERMIT2_FOR_RUNTIME);
+            const { deployAndRegisterMockPermit2 } = await import("./helpers/testUtils");
+            PERMIT2_FOR_RUNTIME = await deployAndRegisterMockPermit2(ethers, I_PolymathRegistry, account_polymath);
             await I_PolymathRegistry.connect(account_polymath).changeAddress("TradingRestrictionManager", I_TradingRestrictionManager.target);
             expect(await I_PolymathRegistry.addressGetter("Permit2Contract")).to.equal(PERMIT2_FOR_RUNTIME);
             expect(await I_PolymathRegistry.addressGetter("TradingRestrictionManager")).to.equal(I_TradingRestrictionManager.target);
@@ -737,9 +739,6 @@ describe("Trading restriction Manager", function() {
             await I_DaiToken.connect(account_investor1).approve(PERMIT2_FOR_RUNTIME, ethers.MaxUint256);
 
             const allowance = await I_DaiToken.allowance(account_investor1.address, PERMIT2_FOR_RUNTIME);
-            console.log("Permit2 allowance:", allowance.toString());
-            console.log("Investor DAI before:", (await I_DaiToken.balanceOf(account_investor1.address)).toString());
-            console.log("Wallet DAI before:", (await I_DaiToken.balanceOf(account_issuer.address)).toString());
 
             const { permit, permitSignature } = await generatePermit2Data(
                 daiAddress,
@@ -764,17 +763,6 @@ describe("Trading restriction Manager", function() {
             const init_WalletPOLYBal = await I_PolyToken.balanceOf(account_issuer.address);
             const init_WalletDAIBal = await I_DaiToken.balanceOf(account_issuer.address);
 
-            console.log("--- Off-Chain Data Used For Signature ---");
-            console.log("Signer (owner):", account_investor1.address.toLowerCase());
-            console.log("Spender (STO contract):", stoAddress.toLowerCase());
-            console.log("Permit2 Contract for Domain:", PERMIT2_ADDRESS.toLowerCase());
-            console.log("Chain ID:", Number(chainId));
-            console.log("P2 Param - Token:", permit.permitted.token.toLowerCase());
-            console.log("P2 Param - Amount (spentValue):", permit.permitted.amount.toString());
-            console.log("P2 Param - Nonce:", permit.nonce.toString());
-            console.log("P2 Param - Deadline:", permit.deadline.toString());
-            console.log("Signature:", permitSignature);
-            console.log("-----------------------------------------");
 
             // Buy With DAI
             const tx2 = await I_USDTieredSTO_Array[stoId].connect(account_investor1).buyWithUSD(
@@ -794,7 +782,6 @@ describe("Trading restriction Manager", function() {
             );
             const receipt2 = await tx2.wait();
             const gasCost2 = receipt2.gasUsed * receipt2.gasPrice;
-            console.log(`Gas buyWithUSD: ${receipt2.gasUsed}`);
 
             const final_TokenSupply = await I_SecurityToken.totalSupply();
             const final_InvestorTokenBal = await I_SecurityToken.balanceOf(account_investor1.address);

@@ -334,30 +334,11 @@ describe("USDTieredSTO", function() {
         await I_PolymathRegistry.connect(POLYMATH).changeAddress("PolyUsdOracle", await I_POLYOracle.getAddress());
 
         // Deploy and register MockPermit2 for local tests
-        const MockPermit2: ContractFactory = await ethers.getContractFactory("MockPermit2");
-        const mockPermit2 = await MockPermit2.connect(POLYMATH).deploy();
-        await mockPermit2.waitForDeployment();
-        PERMIT2_FOR_RUNTIME = await mockPermit2.getAddress();
-        await I_PolymathRegistry.connect(POLYMATH).changeAddress("Permit2Contract", PERMIT2_FOR_RUNTIME);
+        const { deployAndRegisterMockPermit2 } = await import("./helpers/testUtils");
+        PERMIT2_FOR_RUNTIME = await deployAndRegisterMockPermit2(ethers, I_PolymathRegistry, POLYMATH);
         expect(await I_PolymathRegistry.addressGetter("Permit2Contract")).to.equal(PERMIT2_FOR_RUNTIME);
 
-        // Printing all the contract addresses
-        console.log(`
-        --------------------- Polymath Network Smart Contracts: ---------------------
-        PolymathRegistry:                  ${await I_PolymathRegistry.getAddress()}
-        SecurityTokenRegistryProxy:        ${await I_SecurityTokenRegistryProxy.getAddress()}
-        SecurityTokenRegistry:             ${await I_SecurityTokenRegistry.getAddress()}
-        ModuleRegistry:                    ${await I_ModuleRegistry.getAddress()}
-        FeatureRegistry:                   ${await I_FeatureRegistry.getAddress()}
-
-        STFactory:                         ${await I_STFactory.getAddress()}
-        GeneralTransferManagerFactory:     ${await I_GeneralTransferManagerFactory.getAddress()}
-
-        USDOracle:                         ${await I_USDOracle.getAddress()}
-        POLYOracle:                        ${await I_POLYOracle.getAddress()}
-        USDTieredSTOFactory:               ${await I_USDTieredSTOFactory.getAddress()}
-        -----------------------------------------------------------------------------
-        `);
+        // Omit verbose address printing in tests
     });
     describe("Generate the SecurityToken", async () => {
         it("Should register the ticker before the generation of the security token", async () => {

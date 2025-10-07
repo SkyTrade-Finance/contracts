@@ -9,9 +9,23 @@ import { takeSnapshot, increaseTime, revertToSnapshot } from "./helpers/time";
 import { encodeProxyCall, encodeModuleCall } from "./helpers/encodeCall";
 import { catchRevert } from "./helpers/exceptions";
 import { setUpPolymathNetwork, deployDummySTOAndVerifyed } from "./helpers/createInstances";
+import { TOKEN_CONFIG, MODULE_KEYS, InvestorClass, FEE_CONSTANTS, COMMON_ADDRESSES } from "./helpers/testConstants";
 
+/**
+ * SecurityTokenRegistry Test Suite
+ * 
+ * Tests the SecurityTokenRegistry contract which manages the registration
+ * and generation of security tokens in the Polymath ecosystem.
+ * 
+ * Tests cover:
+ * - Ticker registration and management
+ * - Security token generation and deployment
+ * - Version management and upgrades
+ * - Access control and permissions
+ * - Edge cases and error conditions
+ */
 describe("SecurityTokenRegistry", function() {
-    // Accounts Variable declaration
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
     let account_investor1: HardhatEthersSigner;
     let account_issuer: HardhatEthersSigner;
@@ -24,12 +38,12 @@ describe("SecurityTokenRegistry", function() {
     let treasury_wallet: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
 
+    // ============ Test Constants ============
     let balanceOfReceiver: bigint;
-
     let ID_snap: string;
     const message = "Transaction Should Fail!!";
 
-    // Contract Instance Declaration
+    // ============ Contract Instances ============
     let I_GeneralTransferManagerFactory: Contract;
     let I_GeneralPermissionManager: Contract;
     let I_GeneralTransferManager: Contract;
@@ -65,27 +79,28 @@ describe("SecurityTokenRegistry", function() {
     let SecurityTokenRegistryProxyFactory: ContractFactory;
     let STRGetterFactory: ContractFactory;
 
-    // SecurityToken Details (Launched ST on the behalf of the issuer)
-    const name = "Demo Token";
-    const symbol = "DET";
-    const tokenDetails = "This is equity type of issuance";
-    const decimals = 18;
-    //Security Token Detials (Version 2)
+    // ============ Test Configuration ============
+    const name = TOKEN_CONFIG.name;
+    const symbol = TOKEN_CONFIG.symbol;
+    const tokenDetails = TOKEN_CONFIG.tokenDetails;
+    const decimals = TOKEN_CONFIG.decimals;
+    
+    // Security Token Details (Version 2)
     const name2 = "Demo2 Token";
     const symbol2 = "DET2";
-    const tokenDetails2 = "This is equity type of issuance";
-    const address_zero = "0x0000000000000000000000000000000000000000";
-    const one_address = "0x0000000000000000000000000000000000000001";
+    const tokenDetails2 = TOKEN_CONFIG.tokenDetails;
+    
+    const address_zero = COMMON_ADDRESSES.ZERO;
+    const one_address = COMMON_ADDRESSES.ONE;
 
-    // Module key
-    const permissionManagerKey = 1;
-    const transferManagerKey = 2;
-    const stoKey = 3;
+    const permissionManagerKey = MODULE_KEYS.DELEGATE_MANAGER;
+    const transferManagerKey = MODULE_KEYS.TRANSFER_MANAGER;
+    const stoKey = MODULE_KEYS.STO;
     const budget = 0;
 
     // Initial fee for ticker registry and security token registry
     const initRegFee = ethers.parseEther("250");
-    const initRegFeePOLY = ethers.parseEther("1000");
+    const initRegFeePOLY = FEE_CONSTANTS.INIT_REG_FEE;
 
     const STRProxyParameters = ["address", "uint256", "uint256", "address", "address"];
     const STOParameters = ["uint256", "uint256", "uint256", "string"];
