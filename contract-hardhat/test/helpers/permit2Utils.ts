@@ -20,7 +20,8 @@ export const generatePermit2Data = async (
   permit: PermitTransferFrom;
   permitSignature: string;
 }> => {
-  const currentTime = Math.floor(Date.now() / 1000);
+  const block = await (signer.provider as any).getBlock("latest");
+  const currentTime = Number(block.timestamp);
   const deadline = currentTime + 172800; // 2 days from now
   const nonce = Math.floor(Math.random() * 1e15); // 1 quadrillion potential nonces
 
@@ -77,7 +78,8 @@ export const generateERC20PermitData = async (
   chainId: number,
   tokenVersion: string = "1"
 ): Promise<ERC20PermitData> => {
-  const currentTime = Math.floor(Date.now() / 1000);
+  const block = await (signer.provider as any).getBlock("latest");
+  const currentTime = Number(block.timestamp);
   const deadline = currentTime + 36000; // 1 hour from now
 
   // Get the current nonce for the owner from the token contract

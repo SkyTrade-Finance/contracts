@@ -11,9 +11,23 @@ import { pk } from "./helpers/testprivateKey";
 import { encodeProxyCall, encodeModuleCall } from "./helpers/encodeCall";
 import { catchRevert } from "./helpers/exceptions";
 import { setUpPolymathNetwork, deployGPMAndVerifyed, deployDummySTOAndVerifyed, deployGTMAndVerifyed } from "./helpers/createInstances";
+import { TOKEN_CONFIG, MODULE_KEYS, InvestorClass, FEE_CONSTANTS, COMMON_ADDRESSES } from "./helpers/testConstants";
 
+/**
+ * GeneralTransferManager Test Suite
+ * 
+ * Tests the GeneralTransferManager contract which handles transfer restrictions
+ * and KYC compliance for security tokens.
+ * 
+ * Tests cover:
+ * - Transfer restrictions and KYC data management
+ * - Investor whitelisting and permissions
+ * - Transfer validation and enforcement
+ * - Access control and administrative functions
+ * - Edge cases and error conditions
+ */
 describe("GeneralTransferManager", function() {
-    // Accounts Variable declaration
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
     let account_issuer: HardhatEthersSigner;
     let token_owner: HardhatEthersSigner;
@@ -27,14 +41,15 @@ describe("GeneralTransferManager", function() {
     let account_affiliates2: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
 
-    // investor Details
+    // ============ Time Variables ============
     let fromTime: number;
     let toTime: number;
     let expiryTime: number;
 
+    // ============ Test Constants ============
     let message = "Transaction Should Fail!";
 
-    // Contract Instance Declaration
+    // ============ Contract Instances ============
     let I_GeneralPermissionManagerFactory: any;
     let I_GeneralTransferManagerFactory: any;
     let I_SecurityTokenRegistryProxy: any;
@@ -65,19 +80,19 @@ describe("GeneralTransferManager", function() {
     let GeneralPermissionManagerFactory: ContractFactory;
     let STGetterFactory: ContractFactory;
 
-    const name = "Team";
-    const symbol = "sap";
-    const tokenDetails = "This is equity type of issuance";
-    const decimals = 18;
-    const contact = "team@polymath.network";
+    // ============ Test Configuration ============
+    const name = TOKEN_CONFIG.name;
+    const symbol = TOKEN_CONFIG.symbol.toLowerCase();
+    const tokenDetails = TOKEN_CONFIG.tokenDetails;
+    const decimals = TOKEN_CONFIG.decimals;
+    const contact = TOKEN_CONFIG.contact;
 
-    // Module key
-    const delegateManagerKey = 1;
-    const transferManagerKey = 2;
-    const stoKey = 3;
+    const delegateManagerKey = MODULE_KEYS.DELEGATE_MANAGER;
+    const transferManagerKey = MODULE_KEYS.TRANSFER_MANAGER;
+    const stoKey = MODULE_KEYS.STO;
 
     // Initial fee for ticker registry and security token registry
-    const initRegFee = ethers.parseEther("1000");
+    const initRegFee = FEE_CONSTANTS.INIT_REG_FEE;
 
     // Dummy STO details
     let startTime: number;
@@ -87,8 +102,8 @@ describe("GeneralTransferManager", function() {
     const STOParameters = ["uint256", "uint256", "uint256", "string"];
 
     let currentTime: number;
-    const address_zero = ethers.ZeroAddress;
-    const one_address = "0x0000000000000000000000000000000000000001";
+    const address_zero = COMMON_ADDRESSES.ZERO;
+    const one_address = COMMON_ADDRESSES.ONE;
     let signer: any;
     let snapid: string;
 

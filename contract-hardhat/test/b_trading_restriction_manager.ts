@@ -1,52 +1,70 @@
+import { expect } from "chai";
+import { ethers, network } from "hardhat";
 import { LogDescription } from "ethers";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
+import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
+
+import { latestBlockTime } from "./helpers/testUtils";
 import { setUpPolymathNetwork } from "./helpers/createInstances";
 import { latestTime } from "./helpers/latestTime";
 import { duration } from "./helpers/utils";
-import { network } from "hardhat";
 import { generateMerkleRootSignature } from "./helpers/encodeCall";
-import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
+import { TOKEN_CONFIG, MODULE_KEYS, InvestorClass, FEE_CONSTANTS } from "./helpers/testConstants";
 
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
-const { StandardMerkleTree } = require("@openzeppelin/merkle-tree");
-
+/**
+ * TradingRestrictionManager Test Suite
+ * 
+ * Tests the TradingRestrictionManager contract which handles investor verification
+ * and trading restrictions based on geographic location and accreditation status.
+ * 
+ * Tests cover:
+ * - Merkle root management and investor verification
+ * - Operator role management
+ * - Trading restriction periods for US/Non-US investors
+ * - Whitelist-only trading enforcement
+ * - KYC data retrieval and edge cases
+ */
 describe("TradingRestrictionManager", function() {
-  let contract,
-    owner,
-    operator,
-    nonOperator,
-    nonOperator1,
-    investor1,
-    investor2,
-    investor3,
-    token1,
-    token2,
-    account_controller;
-  let merkleTree,
-    merkleRoot,
-    proof1,
-    proof2,
-    expiry,
-    isAccredited1,
-    isAccredited2,
-    fromTime,
-    toTime,
-    expiryTime;
+  // ============ Account Variables ============
+  let owner: any;
+  let operator: any;
+  let nonOperator: any;
+  let nonOperator1: any;
+  let investor1: any;
+  let investor2: any;
+  let investor3: any;
+  let token1: any;
+  let token2: any;
+  let account_controller: any;
 
-  let GeneralTransferManager;
+  // ============ Merkle Tree Variables ============
+  let merkleTree: any;
+  let merkleRoot: string;
+  let proof1: string[];
+  let proof2: string[];
+  let expiry: number;
+  let isAccredited1: boolean;
+  let isAccredited2: boolean;
+  let fromTime: number;
+  let toTime: number;
+  let expiryTime: number;
 
-  let I_GeneralPermissionManagerFactory;
-  let I_SecurityTokenRegistryProxy;
-  let I_GeneralTransferManagerFactory;
-  let I_GeneralPermissionManager;
-  let I_GeneralTransferManager;
-  let I_ExchangeTransferManager;
+  // ============ Contract Factories ============
+  let GeneralTransferManager: any;
+
+  // ============ Contract Instances ============
+  let I_GeneralPermissionManagerFactory: any;
+  let I_SecurityTokenRegistryProxy: any;
+  let I_GeneralTransferManagerFactory: any;
+  let I_GeneralPermissionManager: any;
+  let I_GeneralTransferManager: any;
+  let I_ExchangeTransferManager: any;
   let I_STRProxied: any;
-  let I_MRProxied;
-  let I_ModuleRegistry;
-  let I_ModuleRegistryProxy;
-  let I_FeatureRegistry;
-  let I_SecurityTokenRegistry;
+  let I_MRProxied: any;
+  let I_ModuleRegistry: any;
+  let I_ModuleRegistryProxy: any;
+  let I_FeatureRegistry: any;
+  let I_SecurityTokenRegistry: any;
   let I_STFactory;
   let I_SecurityToken;
   let I_PolyToken;
@@ -60,30 +78,21 @@ describe("TradingRestrictionManager", function() {
   let proof3;
   let I_TradingRestrictionManager;
 
-  // Module key
-  const delegateManagerKey = 1;
-  const transferManagerKey = 2;
-  const stoKey = 3;
+  // ============ Test Configuration ============
+  const name = TOKEN_CONFIG.name;
+  const symbol = TOKEN_CONFIG.symbol;
+  const tokenDetails = TOKEN_CONFIG.tokenDetails;
 
-  // Initial fee for ticker registry and security token registry
-  const initRegFee = ethers.parseEther("1000");
-
-  const InvestorClass = {
-    NonUS: 0,
-    US: 1,
-  };
-
-  const name = "Team";
-  const symbol = "SAP";
-  const tokenDetails = "This is equity type of issuance";
-  const decimals = 18;
-  const contact = "team@polymath.network";
-
+  /**
+   * Setup: Initialize Polymath ecosystem and prepare test data
+   */
   before(async function() {
     await network.provider.request({
       method: "hardhat_reset",
       params: [],
     });
+
+    // Get test accounts
     [
       owner,
       operator,
@@ -97,15 +106,11 @@ describe("TradingRestrictionManager", function() {
       account_controller,
     ] = await ethers.getSigners();
 
-    GeneralTransferManager = await ethers.getContractFactory(
-      "GeneralTransferManager"
-    );
+    // Load contract factories
+    GeneralTransferManager = await ethers.getContractFactory("GeneralTransferManager");
 
-    // Step 1: Deploy the general PM ecosystem
-    const instances = await setUpPolymathNetwork(
-      owner.address,
-      operator.address
-    );
+    // Deploy Polymath ecosystem
+    const instances = await setUpPolymathNetwork(owner.address, operator.address);
 
     [
       I_PolymathRegistry,
@@ -124,47 +129,28 @@ describe("TradingRestrictionManager", function() {
       I_TradingRestrictionManager,
     ] = instances;
 
-    // Printing all the I_TradingRestrictionManager addresses
-    console.log(`
-        --------------------- Polymath Network Smart Contracts: ---------------------
-        PolymathRegistry:                  ${I_PolymathRegistry.target}
-        SecurityTokenRegistryProxy:        ${I_SecurityTokenRegistryProxy.target}
-        SecurityTokenRegistry:             ${I_SecurityTokenRegistry.target}
-        ModuleRegistryProxy:               ${I_ModuleRegistryProxy.target}
-        ModuleRegistry:                    ${I_ModuleRegistry.target}
-        FeatureRegistry:                   ${I_FeatureRegistry.target}
-
-        STFactory:                         ${I_STFactory.target}
-        GeneralTransferManagerFactory:     ${I_GeneralTransferManagerFactory.target}
-        TradingRestrictionManager:         ${I_TradingRestrictionManager.target}
-        -----------------------------------------------------------------------------
-        `);
-
-    // Prepare Merkle tree data
+    // Setup time variables
     fromTime = await latestTime();
     toTime = await latestTime();
     expiryTime = toTime + duration.days(15);
-
     ltime = (await latestTime()) + duration.days(300);
-    expiry = (await latestTime()) + duration.days(300); // 100 days from now
-    isAccredited1 = false;
-    isAccredited2 = true;
+    expiry = (await latestTime()) + duration.days(365);
 
+    // Setup investor accreditation status
+    isAccredited1 = false;  // Non-accredited
+    isAccredited2 = true;   // Accredited
+
+    // Create Merkle tree for investor verification
     const values = [
       [investor1.address, ltime, isAccredited1, InvestorClass.NonUS],
       [investor2.address, ltime, isAccredited2, InvestorClass.NonUS],
       [investor3.address, ltime, isAccredited2, InvestorClass.US],
     ];
 
-    merkleTree = StandardMerkleTree.of(values, [
-      "address",
-      "uint64",
-      "bool",
-      "uint64",
-    ]);
+    merkleTree = StandardMerkleTree.of(values, ["address", "uint64", "bool", "uint64"]);
     merkleRoot = merkleTree.root;
 
-    // Get proofs
+    // Generate Merkle proofs for each investor
     for (const [i, v] of merkleTree.entries()) {
       if (v[0] === investor1.address) {
         proof1 = merkleTree.getProof(i);
@@ -176,8 +162,9 @@ describe("TradingRestrictionManager", function() {
         proof3 = merkleTree.getProof(i);
       }
     }
-    signa = await generateMerkleRootSignature(operator, merkleRoot, expiry);
 
+    // Generate signatures for merkle root updates
+    signa = await generateMerkleRootSignature(operator, merkleRoot, expiry);
     signa1 = await generateMerkleRootSignature(nonOperator, merkleRoot, expiry);
   });
 
@@ -206,6 +193,15 @@ describe("TradingRestrictionManager", function() {
       expect(
         await I_TradingRestrictionManager.isOperator(operator.address)
       ).to.equal(true);
+    });
+    it("should reject non-operator-signed merkle root updates", async () => {
+      await expect(
+        I_TradingRestrictionManager.connect(operator).updateMerkleRootWithSignature(
+          merkleRoot,
+          expiry,
+          signa1 // signed by nonOperator
+        )
+      ).to.be.revertedWith("Signature must be from operator");
     });
     it("should whitelist three investors", async () => {
       // const endTime = BigInt(ltime) + BigInt(duration.days(30));
@@ -274,9 +270,6 @@ describe("TradingRestrictionManager", function() {
     });
 
     it("should allow operator to set merkle root", async function() {
-      // await I_TradingRestrictionManager.connect(operator).modifyKYCData(merkleRoot);
-      // Verify by checking that a valid proof works
-      console.log("---------------------------", ltime, proof1, merkleRoot);
       await expect(
         I_TradingRestrictionManager.connect(operator).verifyInvestor(
           proof1,
@@ -340,7 +333,7 @@ describe("TradingRestrictionManager", function() {
       ).verifyInvestor(
         proof1,
         investor1.address,
-        expiry,
+        ltime,
         isAccredited1,
         InvestorClass.NonUS
       );
@@ -350,7 +343,7 @@ describe("TradingRestrictionManager", function() {
         .withArgs(
           investor1.address,
           proof1,
-          expiry,
+          ltime,
           isAccredited1,
           InvestorClass.NonUS
         );
@@ -479,7 +472,7 @@ describe("TradingRestrictionManager", function() {
         I_TradingRestrictionManager.connect(investor1).verifyInvestor(
           updatedProof1,
           investor1.address,
-          expiry,
+          ltime,
           isAccredited1,
           InvestorClass.US
         )
@@ -504,7 +497,7 @@ describe("TradingRestrictionManager", function() {
     it("Should register the ticker before the generation of the security token", async () => {
       await I_PolyToken.connect(operator).approve(
         I_STRProxied.target,
-        initRegFee
+        FEE_CONSTANTS.INIT_REG_FEE
       );
       const tx = await I_STRProxied.connect(operator).registerNewTicker(
         operator.address,
@@ -543,7 +536,7 @@ describe("TradingRestrictionManager", function() {
     it("Should generate the new security token with the same symbol as registered above", async () => {
       await I_PolyToken.connect(operator).approve(
         I_STRProxied.target,
-        initRegFee
+        FEE_CONSTANTS.INIT_REG_FEE
       );
 
       const tx = await I_STRProxied.connect(operator).generateNewSecurityToken(
@@ -613,7 +606,7 @@ describe("TradingRestrictionManager", function() {
 
     it("Should initialize the auto attached modules", async () => {
       const moduleData: string[] = await stGetter.getModulesByType(
-        transferManagerKey
+        MODULE_KEYS.TRANSFER_MANAGER
       );
 
       I_GeneralTransferManager = GeneralTransferManager.attach(moduleData[0]);
@@ -762,9 +755,6 @@ describe("TradingRestrictionManager", function() {
     });
 
     it("should emit OwnershipTransferred event", async function() {
-      console.log("Current owner:", await I_TradingRestrictionManager.owner());
-      console.log("Owner:", owner.address);
-      console.log("Operator:", operator.address);
       await expect(
         I_TradingRestrictionManager.connect(operator).transferOwnership(
           owner.address
@@ -962,8 +952,7 @@ describe("TradingRestrictionManager", function() {
         token1.address
       );
 
-      const latestBlock = await ethers.provider.getBlock("latest");
-      const now = Number(latestBlock.timestamp);
+      const now = await latestBlockTime(ethers);
       const drift = 2 * 24 * 3600; // allow 2 days drift under coverage
       const floorTs = BigInt(now - drift);
       expect(result.canSendAfter).to.be.gte(floorTs);
@@ -985,8 +974,7 @@ describe("TradingRestrictionManager", function() {
         token1.address
       );
 
-      const latestBlock = await ethers.provider.getBlock("latest");
-      const now = Number(latestBlock.timestamp);
+      const now = await latestBlockTime(ethers);
       const drift = 2 * 24 * 3600; // allow 2 days drift under coverage
       const floorTs = BigInt(now - drift);
       expect(result.canSendAfter).to.be.gte(floorTs);
@@ -1065,7 +1053,7 @@ describe("TradingRestrictionManager", function() {
 
       const expectedUnlockTime = lockStart + usPeriod;
       expect(result.canSendAfter).to.equal(expectedUnlockTime);
-      expect(result.expiryTime).to.equal(expiry);
+      expect(result.expiryTime).to.equal(ltime);
       expect(result.added).to.equal(1);
     });
 
@@ -1073,7 +1061,7 @@ describe("TradingRestrictionManager", function() {
       await I_TradingRestrictionManager.connect(investor1).verifyInvestor(
         proof1,
         investor1.address,
-        expiry,
+        ltime,
         isAccredited1,
         InvestorClass.NonUS
       );
@@ -1106,7 +1094,7 @@ describe("TradingRestrictionManager", function() {
       await I_TradingRestrictionManager.connect(investor1).verifyInvestor(
         proof1,
         investor1.address,
-        expiry,
+        ltime,
         isAccredited1,
         InvestorClass.NonUS
       );
@@ -1186,13 +1174,11 @@ describe("TradingRestrictionManager", function() {
     });
 
     it("should handle zero restriction periods", async function() {
-      await I_TradingRestrictionManager.connect(operator).modifyKYCData(
-        merkleRoot
-      );
+      await I_TradingRestrictionManager.connect(operator).modifyKYCData(merkleRoot);
       await I_TradingRestrictionManager.connect(investor1).verifyInvestor(
         proof1,
         investor1.address,
-        expiry,
+        ltime,
         isAccredited1,
         InvestorClass.NonUS
       );

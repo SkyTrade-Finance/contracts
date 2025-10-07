@@ -2,17 +2,31 @@ import { assert, expect } from "chai";
 import { ethers, network } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { Contract, ContractFactory, LogDescription } from "ethers";
+import Web3 from "web3";
 
 import { latestTime } from "./helpers/latestTime";
 import { duration } from "./helpers/utils";
 import { setUpPolymathNetwork, deployERC20DividendAndVerifyed, deployGPMAndVerifyed } from "./helpers/createInstances";
-import Web3 from "web3";
 import { increaseTime, revertToSnapshot, takeSnapshot } from "./helpers/time";
 import { encodeModuleCall, encodeProxyCall } from "./helpers/encodeCall";
+import { TOKEN_CONFIG, MODULE_KEYS, InvestorClass, FEE_CONSTANTS, COMMON_ADDRESSES } from "./helpers/testConstants";
 
+/**
+ * ERC20DividendCheckpoint Test Suite
+ * 
+ * Tests the ERC20DividendCheckpoint contract which enables dividend distributions
+ * in ERC20 tokens to token holders based on their holdings at specific checkpoints.
+ * 
+ * Tests cover:
+ * - Dividend creation and configuration with ERC20 tokens
+ * - Token distribution to token holders
+ * - Checkpoint management and balance queries
+ * - Access control and permissions
+ * - Edge cases and error conditions
+ */
 describe("ERC20DividendCheckpoint", function() {
 
-    // Accounts Variable declaration
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
     let account_issuer: HardhatEthersSigner;
     let token_owner: HardhatEthersSigner;
@@ -25,10 +39,11 @@ describe("ERC20DividendCheckpoint", function() {
     let account_temp: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
 
+    // ============ Test Constants ============
     const message = "Transaction Should Fail!";
     const dividendName = "0x546573744469766964656e640000000000000000000000000000000000000000";
 
-    // Contract Instance Declaration
+    // ============ Contract Instances ============
     let I_GeneralTransferManagerFactory: any;
     let I_SecurityTokenRegistryProxy: any;
     let I_ERC20DividendCheckpointFactory: any;
@@ -57,27 +72,26 @@ describe("ERC20DividendCheckpoint", function() {
     let GeneralTransferManagerFactory: any;
     let ERC20DividendCheckpointFactory: any;
 
-    // SecurityToken Details
-    const name = "Team";
-    const symbol = "SAP";
-    const tokenDetails = "This is equity type of issuance";
-    const decimals = 18;
-    const contact = "team@polymath.network";
+    // ============ Test Configuration ============
+    const name = TOKEN_CONFIG.name;
+    const symbol = TOKEN_CONFIG.symbol;
+    const tokenDetails = TOKEN_CONFIG.tokenDetails;
+    const decimals = TOKEN_CONFIG.decimals;
+    const contact = TOKEN_CONFIG.contact;
 
-    // Module keys
-    const delegateManagerKey = 1;
-    const transferManagerKey = 2;
-    const stoKey = 3;
-    const checkpointKey = 4;
+    const delegateManagerKey = MODULE_KEYS.DELEGATE_MANAGER;
+    const transferManagerKey = MODULE_KEYS.TRANSFER_MANAGER;
+    const stoKey = MODULE_KEYS.STO;
+    const checkpointKey = MODULE_KEYS.CHECKPOINT;
 
     // Manager details
     const managerDetails = ethers.encodeBytes32String("Hello");
 
     // Initial fee for ticker registry and security token registry
-    const initRegFee = ethers.parseEther("1000");
+    const initRegFee = FEE_CONSTANTS.INIT_REG_FEE;
 
-    const one_address = "0x0000000000000000000000000000000000000001";
-    const address_zero = ethers.ZeroAddress;
+    const one_address = COMMON_ADDRESSES.ONE;
+    const address_zero = COMMON_ADDRESSES.ZERO;
 
     let currentTime: number;
     let snapId: string;

@@ -2,71 +2,54 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { Contract, ContractFactory, LogDescription } from "ethers";
+import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 
 import { latestTime } from "./helpers/latestTime";
 import { duration } from "./helpers/utils";
 import { setUpPolymathNetwork } from "./helpers/createInstances";
 import { initializeContracts } from "../scripts/polymath-deploy";
-
-import {
-    DataStore,
-    DataStoreFactory,
-    DummySTO,
-    DummySTOFactory,
-    ERC20DividendCheckpoint,
-    ERC20DividendCheckpointFactory,
-    EtherDividendCheckpoint,
-    EtherDividendCheckpointFactory,
-    FeatureRegistry,
-    GeneralPermissionManager,
-    GeneralPermissionManagerFactory,
-    GeneralTransferManager,
-    GeneralTransferManagerFactory,
-    MockOracle,
-    ModuleRegistry,
-    ModuleRegistryProxy,
-    PolyTokenFaucet,
-    PolymathRegistry,
-    STFactory,
-    STGetter,
-    STRGetter,
-    SecurityToken,
-    SecurityTokenRegistry,
-    SecurityTokenRegistryProxy,
-    TokenLib,
-    USDTieredSTO,
-    USDTieredSTOFactory,
-} from "../typechain-types";
-import { PERMIT2_ADDRESS } from "@uniswap/permit2-sdk";
-import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
 import { generateMerkleRootSignature } from "./helpers/encodeCall";
+import { 
+    TOKEN_CONFIG, 
+    MODULE_KEYS, 
+    InvestorClass, 
+    FEE_CONSTANTS 
+} from "./helpers/testConstants";
 
+import type {
+    SecurityTokenRegistryProxy,
+    GeneralTransferManagerFactory,
+    GeneralTransferManager,
+} from "../typechain-types";
+
+/**
+ * Checkpoint Test Suite
+ * 
+ * This suite tests the checkpoint functionality which allows tracking
+ * token balances at specific points in time. This is crucial for:
+ * - Dividend distributions
+ * - Voting rights calculations
+ * - Historical balance queries
+ */
 describe("Checkpoints", function() {
-    // Accounts Variable declaration
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
-    let account_issuer: HardhatEthersSigner;
     let token_owner: HardhatEthersSigner;
+    let account_controller: HardhatEthersSigner;
     let account_investor1: HardhatEthersSigner;
     let account_investor2: HardhatEthersSigner;
     let account_investor3: HardhatEthersSigner;
     let account_investor4: HardhatEthersSigner;
-    let account_controller: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
 
-    const message = "Transaction Should Fail!";
-
-    // investor Details
-    let fromTime: number;
-    let toTime: number;
+    // ============ Time Variables ============
+    let ltime: number;
     let expiryTime: number;
 
-    // Contract Instance Declaration
-    let I_GeneralPermissionManagerFactory: Contract;
+    // ============ Contract Instances ============
     let I_SecurityTokenRegistryProxy: SecurityTokenRegistryProxy;
     let I_GeneralTransferManagerFactory: GeneralTransferManagerFactory;
-    let I_GeneralPermissionManager: Contract;
     let I_GeneralTransferManager: GeneralTransferManager;
-    let I_ExchangeTransferManager: Contract;
     let I_STRProxied: any;
     let I_MRProxied: Contract;
     let I_ModuleRegistry: Contract;
@@ -74,16 +57,15 @@ describe("Checkpoints", function() {
     let I_FeatureRegistry: Contract;
     let I_SecurityTokenRegistry: Contract;
     let I_STFactory: Contract;
-    let I_SecurityToken: Contract;
-    let I_PolyToken: Contract;
+    let I_SecurityToken: any;
+    let I_PolyToken: any;
     let I_PolymathRegistry: Contract;
     let I_STRGetter: Contract;
     let I_STGetter: Contract;
-    let stGetter: Contract;
+    let I_TradingRestrictionManager: any;
+    let stGetter: any;
 
-    let ltime;
-    let isAccredited1: boolean;
-    let isAccredited2: boolean;
+    // ============ Merkle Tree Variables ============
     let merkleTree: any;
     let merkleRoot: string;
     let proof1: string[];
@@ -91,97 +73,65 @@ describe("Checkpoints", function() {
     let proof3: string[];
     let proof4: string[];
     let signa: string;
+    let isAccredited1: boolean;
+    let isAccredited2: boolean;
 
-    enum InvestorClass {
-        NonUS,
-        US
-    }
-
-    let I_TradingRestrictionManager: Contract;
-
-    // Contract factories
-    let SecurityToken: ContractFactory;
+    // ============ Contract Factories ============
     let GeneralTransferManager: ContractFactory;
-    let STGetter: ContractFactory;
 
-    // SecurityToken Details
-    const name = "Team";
-    const symbol = "SAP";
-    const tokenDetails = "This is equity type of issuance";
-    const decimals = 18;
-    const contact = "team@polymath.network";
-
-    // Module key
-    const delegateManagerKey = 1;
-    const transferManagerKey = 2;
-    const stoKey = 3;
-
-    // Initial fee for ticker registry and security token registry
-    const initRegFee = ethers.parseEther("1000");
-
+    /**
+     * Setup: Initialize contracts and accounts
+     * Deploys the Polymath ecosystem and prepares test data
+     */
     before(async () => {
-
+        // Initialize core contracts
         await initializeContracts();
-        // Get signers
+        
+        // Get and assign test accounts
         accounts = await ethers.getSigners();
-        
-        fromTime = await latestTime();
-        toTime = await latestTime();
-        expiryTime = toTime + duration.days(15);
-        
-        // Accounts setup
         account_polymath = accounts[0];
-        account_issuer = accounts[1];
-        token_owner = account_issuer;
+        token_owner = accounts[1];
         account_controller = accounts[3];
         account_investor1 = accounts[6];
         account_investor2 = accounts[7];
         account_investor3 = accounts[8];
         account_investor4 = accounts[9];
 
-        fromTime = await latestTime();
-        toTime = await latestTime();
-        expiryTime = toTime + duration.days(15);
+        // Setup time variables
+        const currentTime = await latestTime();
+        expiryTime = currentTime + duration.days(15);
+        ltime = currentTime + duration.days(300);
 
-        ltime = await latestTime() + duration.days(300);
-        isAccredited1 = false;
-        isAccredited2 = true;
+        // Setup investor accreditation status
+        isAccredited1 = false;  // Non-accredited
+        isAccredited2 = true;   // Accredited
 
-        const values = [
+        // Create Merkle tree for investor verification
+        const investorData = [
             [account_investor1.address, ltime, isAccredited1, InvestorClass.NonUS],
             [account_investor2.address, ltime, isAccredited2, InvestorClass.NonUS],
             [account_investor3.address, ltime, isAccredited2, InvestorClass.US],
             [account_investor4.address, ltime, isAccredited1, InvestorClass.US]
         ];
 
-        merkleTree = StandardMerkleTree.of(values, ["address", "uint64", "bool", "uint64"]);
+        merkleTree = StandardMerkleTree.of(investorData, ["address", "uint64", "bool", "uint64"]);
         merkleRoot = merkleTree.root;
 
-        // Get proofs
+        // Generate Merkle proofs for each investor
         for (const [i, v] of merkleTree.entries()) {
-            if (v[0] === account_investor1.address) {
-                proof1 = merkleTree.getProof(i);
-            }
-            if (v[0] === account_investor2.address) {
-                proof2 = merkleTree.getProof(i);
-            }
-            if (v[0] === account_investor3.address) {
-                proof3 = merkleTree.getProof(i);
-            }
-            if (v[0] === account_investor4.address) {
-                proof4 = merkleTree.getProof(i);
-            }
+            if (v[0] === account_investor1.address) proof1 = merkleTree.getProof(i);
+            if (v[0] === account_investor2.address) proof2 = merkleTree.getProof(i);
+            if (v[0] === account_investor3.address) proof3 = merkleTree.getProof(i);
+            if (v[0] === account_investor4.address) proof4 = merkleTree.getProof(i);
         }
 
-        signa = await generateMerkleRootSignature(
-            token_owner,
-            merkleRoot,
-            expiryTime
-        );
+        // Generate signature for merkle root update
+        signa = await generateMerkleRootSignature(token_owner, merkleRoot, expiryTime);
 
+        // Load contract factories
         GeneralTransferManager = await ethers.getContractFactory("GeneralTransferManager");
 
-        // Step 1: Deploy the general PM ecosystem
+        // Deploy Polymath ecosystem
         const instances = await setUpPolymathNetwork(account_polymath.address, token_owner.address);
 
         [
@@ -220,9 +170,8 @@ describe("Checkpoints", function() {
 
     describe("Generate the SecurityToken", async () => {
         it("Should register the ticker before the generation of the security token", async () => {
-            console.log("Registering the ticker before the generation of the security token", I_STRProxied);
-            await I_PolyToken.connect(token_owner).approve(I_STRProxied.target, initRegFee);
-            const tx = await I_STRProxied.connect(token_owner).registerNewTicker(token_owner.address, symbol);
+            await I_PolyToken.connect(token_owner).approve(I_STRProxied.target, FEE_CONSTANTS.INIT_REG_FEE);
+            const tx = await I_STRProxied.connect(token_owner).registerNewTicker(token_owner.address, TOKEN_CONFIG.symbol);
 
             const receipt = await tx.wait();
             const fullReceipt = await ethers.provider.getTransactionReceipt(receipt!.hash);
@@ -237,9 +186,9 @@ describe("Checkpoints", function() {
                 try {
                     const parsed = I_STRProxied.interface.parseLog(log);
                     
-                    if (parsed && parsed.name === "RegisterTicker") { 
+                    if (parsed && parsed.name === "RegisterTicker") {
                         expect(parsed.args._owner).to.equal(token_owner.address);
-                        expect(parsed.args._ticker).to.equal(symbol.toUpperCase());
+                        expect(parsed.args._ticker).to.equal(TOKEN_CONFIG.symbol.toUpperCase());
                         eventFound = true;
                         break;
                     }
@@ -252,12 +201,12 @@ describe("Checkpoints", function() {
         });
 
         it("Should generate the new security token with the same symbol as registered above", async () => {
-            await I_PolyToken.connect(token_owner).approve(I_STRProxied.target, initRegFee);
+            await I_PolyToken.connect(token_owner).approve(I_STRProxied.target, FEE_CONSTANTS.INIT_REG_FEE);
 
             const tx = await I_STRProxied.connect(token_owner).generateNewSecurityToken(
-                name,
-                symbol,
-                tokenDetails,
+                TOKEN_CONFIG.name,
+                TOKEN_CONFIG.symbol,
+                TOKEN_CONFIG.tokenDetails,
                 false,
                 token_owner.address,
                 0
@@ -280,7 +229,7 @@ describe("Checkpoints", function() {
             }
 
             expect(securityTokenEvent).to.not.be.null;
-            expect(securityTokenEvent!.args._ticker).to.equal(symbol.toUpperCase(), "SecurityToken doesn't get deployed");
+            expect(securityTokenEvent!.args._ticker).to.equal(TOKEN_CONFIG.symbol.toUpperCase(), "SecurityToken doesn't get deployed");
 
             I_SecurityToken = await ethers.getContractAt("SecurityToken", securityTokenEvent!.args._securityTokenAddress);
             stGetter = await ethers.getContractAt("STGetter", I_SecurityToken.target);
@@ -308,10 +257,9 @@ describe("Checkpoints", function() {
         });
 
         it("Should initialize the auto attached modules", async () => {
-            const moduleData: string[] = await stGetter.getModulesByType(transferManagerKey);
-            console.log("Module Data:", moduleData[0], moduleData);
+            const moduleData: string[] = await stGetter.getModulesByType(MODULE_KEYS.TRANSFER_MANAGER);
 
-            I_GeneralTransferManager = GeneralTransferManager.attach(moduleData[0]);
+            I_GeneralTransferManager = await ethers.getContractAt("GeneralTransferManager", moduleData[0]);
             // Apply permissive defaults: no send/receive locks by default
             await I_GeneralTransferManager.connect(token_owner).changeDefaults(0, 0);
         });
@@ -320,11 +268,8 @@ describe("Checkpoints", function() {
     describe("Buy tokens using on-chain whitelist", async () => {
 
         it("should set permit2", async () => {
-            const MockPermit2 = await ethers.getContractFactory("MockPermit2");
-            const mock = await MockPermit2.connect(account_polymath).deploy();
-            await mock.waitForDeployment();
-            const mockAddr = await mock.getAddress();
-            await I_PolymathRegistry.connect(account_polymath).changeAddress("Permit2Contract", mockAddr);
+            const { deployAndRegisterMockPermit2 } = await import("./helpers/testUtils");
+            const mockAddr = await deployAndRegisterMockPermit2(ethers, I_PolymathRegistry, account_polymath);
             // Do NOT set TradingRestrictionManager for this suite; use GTM-only path to avoid transfer restrictions during fuzzing
             expect(await I_PolymathRegistry.addressGetter("Permit2Contract")).to.equal(mockAddr);
         });
@@ -334,194 +279,133 @@ describe("Checkpoints", function() {
             expect(await I_TradingRestrictionManager.isOperator(token_owner.address)).to.equal(true);
         });
         
-        it("should whitelist three investors", async () => {
-            // const endTime = BigInt(ltime) + BigInt(duration.days(30));
-
-            // const nonUSLockPeriod = ltime + (duration.days(15));
-            // const usLockPeriod = ltime + (duration.days(15));
-
-            // const SecurityTokenAddress = await I_SecurityToken.target;
-            // const tx1 = await I_TradingRestrictionManager.setTradingRestrictionPeriod(SecurityTokenAddress, 0, 0, endTime);
-            // const receipt1 = await tx1.wait();
-
-            // let eventUpdate: LogDescription | null = null;
-
-            // for (const log of receipt1!.logs) {
-            //     try {
-            //         const parsed = I_TradingRestrictionManager.interface.parseLog(log);
-                    
-            //         if (parsed && parsed.name === "TradingRestrictionSet") {
-            //             eventUpdate = parsed;
-            //             break;
-            //         }
-            //     } catch (err: any) {
-            //         console.log(`Failed to parse log with STRProxied: ${err.message}`);
-            //     }
-            // }
-
-            // expect(eventUpdate).to.not.be.null;
-            // expect(eventUpdate!.args.token).to.equal(SecurityTokenAddress, "Token address not set correctly");
-            // expect(eventUpdate!.args.nonUS).to.equal(0, "non us lock not set correctly");
-            // expect(eventUpdate!.args.us).to.equal(0, "US lock period not set correctly");
-            // expect(eventUpdate!.args.lockStart).to.equal(endTime, "End time not set correctly");
-
+        it("Should update merkle root for investor verification", async () => {
+            // Update merkle root with operator signature
             const tx = await I_TradingRestrictionManager.connect(token_owner).updateMerkleRootWithSignature(
                 merkleRoot,
                 expiryTime,
                 signa
             );
 
+            // Verify merkle root was stored correctly
             const { root, expiry } = await I_TradingRestrictionManager.getCurrentMerkleRoot();
-
             expect(root).to.equal(merkleRoot, "Merkle root not set correctly");
             expect(expiry).to.equal(expiryTime, "Expiry time not set correctly");
 
+            // Verify MerkleRootUpdated event was emitted
             const receipt = await tx.wait();
-            let MerkleRootUpdatedEvent: LogDescription | null = null;
+            let merkleRootUpdatedEvent: LogDescription | null = null;
 
             for (const log of receipt!.logs) {
                 try {
                     const parsed = I_TradingRestrictionManager.interface.parseLog(log);
-                    
                     if (parsed && parsed.name === "MerkleRootUpdated") {
-                        MerkleRootUpdatedEvent = parsed;
+                        merkleRootUpdatedEvent = parsed;
                         break;
                     }
                 } catch (err: any) {
-                    console.log(`Failed to parse log with STRProxied: ${err.message}`);
+                    // Log parsing may fail for logs from other contracts
+                    continue;
                 }
             }
 
-            expect(MerkleRootUpdatedEvent).to.not.be.null;
-            expect(MerkleRootUpdatedEvent!.args.root).to.equal(merkleRoot, "Merkle root not set correctly");
+            expect(merkleRootUpdatedEvent).to.not.be.null;
+            expect(merkleRootUpdatedEvent!.args.root).to.equal(merkleRoot, "Event merkle root mismatch");
         });
 
-        it("Should verify investor 1 correctly", async () => {
-            console.log(merkleRoot, "merkleRoot");
+        it("Should verify investor 1 (Non-US, non-accredited)", async () => {
             await expect(
                 I_TradingRestrictionManager.connect(token_owner).verifyInvestor(
-                proof1,
-                account_investor1.address,
-                ltime,
-                isAccredited1,
-                InvestorClass.NonUS
-            )
+                    proof1,
+                    account_investor1.address,
+                    ltime,
+                    isAccredited1,
+                    InvestorClass.NonUS
+                )
             ).to.not.be.reverted;
         });
 
-        it("Should verify investor 2 correctly", async () => {
+        it("Should verify investor 2 (Non-US, accredited)", async () => {
             await expect(
                 I_TradingRestrictionManager.connect(token_owner).verifyInvestor(
-                proof2,
-                account_investor2.address,
-                ltime,
-                isAccredited2,
-                InvestorClass.NonUS
-            )
+                    proof2,
+                    account_investor2.address,
+                    ltime,
+                    isAccredited2,
+                    InvestorClass.NonUS
+                )
             ).to.not.be.reverted;
         });
 
-        it("Should verify investor 3 correctly", async () => {
+        it("Should verify investor 3 (US, accredited)", async () => {
             await expect(
                 I_TradingRestrictionManager.connect(token_owner).verifyInvestor(
-                proof3,
-                account_investor3.address,
-                ltime,
-                isAccredited2,
-                InvestorClass.US
-            )
+                    proof3,
+                    account_investor3.address,
+                    ltime,
+                    isAccredited2,
+                    InvestorClass.US
+                )
             ).to.not.be.reverted;
         });
 
-        it("Should verify investor 4 correctly", async () => {
+        it("Should verify investor 4 (US, non-accredited)", async () => {
             await expect(
                 I_TradingRestrictionManager.connect(token_owner).verifyInvestor(
-                proof4,
-                account_investor4.address,
-                ltime,
-                isAccredited1,
-                InvestorClass.US
-            )
+                    proof4,
+                    account_investor4.address,
+                    ltime,
+                    isAccredited1,
+                    InvestorClass.US
+                )
             ).to.not.be.reverted;
         });
 
-        it("Should Buy the tokens", async () => {
-            // Ensure whitelist-only trading is not enforced by defaults
-            // Whitelist investor1 to permit issuance and transfers
+        it("Should issue tokens to investor 1", async () => {
+            // Whitelist investor1 for transfers
             const now = await latestTime();
-            await I_GeneralTransferManager.connect(account_issuer).modifyKYCData(
+            await I_GeneralTransferManager.connect(token_owner).modifyKYCData(
                 account_investor1.address,
                 now,
                 now,
                 now + duration.days(365)
             );
 
-            // Mint some tokens - Fixed: use "0x" instead of "0x0"
+            // Issue tokens to investor 1
             await I_SecurityToken.connect(token_owner).issue(
                 account_investor1.address, 
                 ethers.parseEther("10"), 
                 "0x"
             );
 
-            expect(await I_SecurityToken.balanceOf(account_investor1.address)).to.equal(ethers.parseEther("10"));
+            expect(await I_SecurityToken.balanceOf(account_investor1.address))
+                .to.equal(ethers.parseEther("10"));
         });
 
-        it("Should Buy some more tokens", async () => {
-            const now2 = await latestTime();
-            await I_GeneralTransferManager.connect(account_issuer).modifyKYCData(
+        it("Should issue tokens to investor 2", async () => {
+            // Whitelist investor2 for transfers
+            const now = await latestTime();
+            await I_GeneralTransferManager.connect(token_owner).modifyKYCData(
                 account_investor2.address,
-                now2,
-                now2,
-                now2 + duration.days(365)
+                now,
+                now,
+                now + duration.days(365)
             );
-            // Add the Investor in to the whitelist
-            // const ltime = await latestTime();
-            // const tx = await I_GeneralTransferManager.connect(account_issuer).modifyKYCData(
-            //     account_investor2.address,
-            //     ltime,
-            //     ltime,
-            //     ltime + (duration.days(10)),
-            //     {
-            //         gasLimit: 6000000
-            //     }
-            // );
 
-            // const receipt = await tx.wait();
-            // let GeneralTransferManagerEvent: LogDescription | null = null;
-
-            // // Fixed event parsing
-            // for (const log of receipt!.logs) {
-            //     try {
-            //         const parsed = I_GeneralTransferManager.interface.parseLog(log);
-                    
-            //         if (parsed && parsed.name === "ModifyKYCData") {
-            //             GeneralTransferManagerEvent = parsed;
-            //             break;
-            //         }
-            //     } catch (err: any) {
-            //         console.log(`Failed to parse log: ${err.message}`);
-            //     }
-            // }
-
-            // expect(GeneralTransferManagerEvent).to.not.be.null;
-            // expect(GeneralTransferManagerEvent!.args._investor.toLowerCase()).to.equal(
-            //     account_investor2.address.toLowerCase(),
-            //     "Failed in adding the investor in whitelist"
-            // );
-
-            // Mint some tokens - Fixed: use "0x" instead of "0x0"
+            // Issue tokens to investor 2
             await I_SecurityToken.connect(token_owner).issue(
                 account_investor2.address, 
                 ethers.parseEther("10"), 
                 "0x"
             );
 
-            expect(await I_SecurityToken.balanceOf(account_investor2.address)).to.equal(ethers.parseEther("10"));
+            expect(await I_SecurityToken.balanceOf(account_investor2.address))
+                .to.equal(ethers.parseEther("10"));
         });
 
         it("Add a new token holder", async () => {
             const ltime = (await latestTime());
-            const tx = await I_GeneralTransferManager.connect(account_issuer).modifyKYCData(
+            const tx = await I_GeneralTransferManager.connect(token_owner).modifyKYCData(
                 account_investor3.address,
                 ltime,
                 ltime,

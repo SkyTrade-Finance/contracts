@@ -1,19 +1,32 @@
 import { assert, expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { Contract, ContractFactory, LogDescription } from "ethers";
+import { Contract, LogDescription } from "ethers";
 
-import { catchRevert } from "./helpers/exceptions";
-import { takeSnapshot, increaseTime, revertToSnapshot } from "./helpers/time";
+import { takeSnapshot, revertToSnapshot } from "./helpers/time";
 import { setUpPolymathNetwork } from "./helpers/createInstances";
+import { TOKEN_CONFIG, FEE_CONSTANTS, COMMON_ADDRESSES } from "./helpers/testConstants";
 
-describe("Data store", function() {
-    // Accounts Variable declaration
+/**
+ * DataStore Test Suite
+ * 
+ * Tests the DataStore contract which provides key-value storage functionality
+ * for security tokens. This is used to store arbitrary data associated with tokens.
+ * 
+ * Tests cover:
+ * - Storage and retrieval of different data types (uint256, bytes32, address, string, bytes, bool)
+ * - Array operations (set, get, insert, delete)
+ * - Batch operations (multi-set, multi-insert)
+ * - Access control (only authorized addresses can modify data)
+ * - Security token attachment and management
+ */
+describe("DataStore", function() {
+    // ============ Account Variables ============
     let account_polymath: HardhatEthersSigner;
     let token_owner: HardhatEthersSigner;
     let accounts: HardhatEthersSigner[];
 
-    // Contract Instance Declaration
+    // ============ Contract Instances ============
     let I_GeneralTransferManagerFactory: any;
     let I_SecurityTokenRegistryProxy: any;
     let I_ModuleRegistry: any;
@@ -31,31 +44,24 @@ describe("Data store", function() {
     let I_STGetter: any;
     let stGetter: any;
 
-    // SecurityToken Details
-    const name = "Team";
-    const symbol = "sap";
-    const tokenDetails = "This is equity type of issuance";
-    const contact = "team@polymath.network";
+    // ============ Test Data ============
+    const symbol = TOKEN_CONFIG.symbol;
     const key = '0x' + '41'.padStart(64, '0');
     const key2 = '0x' + '42'.padStart(64, '0');
     const bytes32data = "0x4200000000000000000000000000000000000000000000000000000000000000";
     const bytes32data2 = "0x4400000000000000000000000000000000000000000000000000000000000000";
 
-    // Initial fee for ticker registry and security token registry
-    const initRegFee = ethers.parseEther("1000");
-
-    const address_zero = ethers.ZeroAddress;
-    const address_one = "0x0000000000000000000000000000000000000001";
-    const address_two = "0x0000000000000000000000000000000000000002";
-
+    /**
+     * Setup: Deploy Polymath ecosystem and create security token
+     */
     before(async () => {
-        // Get signers
+        // Get test accounts
         accounts = await ethers.getSigners();
         account_polymath = accounts[0];
         token_owner = accounts[1];
 
-        // Step 1: Deploy the genral PM ecosystem
-        let instances = await setUpPolymathNetwork(account_polymath.address, token_owner.address);
+        // Deploy Polymath ecosystem
+        const instances = await setUpPolymathNetwork(account_polymath.address, token_owner.address);
 
         [
             I_PolymathRegistry,
@@ -73,24 +79,19 @@ describe("Data store", function() {
             I_STGetter
         ] = instances;
 
-        // Printing all the contract addresses
         console.log(`
-        --------------------- Polymath Network Smart Contracts: ---------------------
-        PolymathRegistry:                  ${await I_PolymathRegistry.getAddress()}
-        SecurityTokenRegistryProxy:        ${await I_SecurityTokenRegistryProxy.getAddress()}
-        SecurityTokenRegistry:             ${await I_SecurityTokenRegistry.getAddress()}
-        ModuleRegistry:                    ${await I_ModuleRegistry.getAddress()}
-        FeatureRegistry:                   ${await I_FeatureRegistry.getAddress()}
-
-        STFactory:                         ${await I_STFactory.getAddress()}
-        GeneralTransferManagerFactory:     ${await I_GeneralTransferManagerFactory.getAddress()}
-        -----------------------------------------------------------------------------
+        ===================== Polymath Network Deployed =====================
+        PolymathRegistry:              ${await I_PolymathRegistry.getAddress()}
+        SecurityTokenRegistry:         ${await I_SecurityTokenRegistry.getAddress()}
+        ModuleRegistry:                ${await I_ModuleRegistry.getAddress()}
+        STFactory:                     ${await I_STFactory.getAddress()}
+        ====================================================================
         `);
     });
 
     describe("Generate the SecurityToken", async () => {
         it("Should register the ticker before the generation of the security token", async () => {
-            await I_PolyToken.connect(token_owner).approve(await I_STRProxied.getAddress(), initRegFee);
+            await I_PolyToken.connect(token_owner).approve(await I_STRProxied.getAddress(), FEE_CONSTANTS.INIT_REG_FEE);
             let tx = await I_STRProxied.connect(token_owner).registerNewTicker(token_owner.address, symbol);
             
             const receipt = await tx.wait();
@@ -121,9 +122,9 @@ describe("Data store", function() {
         });
 
         it("Should generate the new security token with the same symbol as registered above", async () => {
-            await I_PolyToken.connect(token_owner).approve(await I_STRProxied.getAddress(), initRegFee);
+            await I_PolyToken.connect(token_owner).approve(await I_STRProxied.getAddress(), FEE_CONSTANTS.INIT_REG_FEE);
 
-            let tx = await I_STRProxied.connect(token_owner).generateNewSecurityToken(name, symbol, tokenDetails, false, token_owner.address, 0);
+            let tx = await I_STRProxied.connect(token_owner).generateNewSecurityToken(TOKEN_CONFIG.name, symbol, TOKEN_CONFIG.tokenDetails, false, token_owner.address, 0);
 
             const receipt = await tx.wait();
             let securityTokenEvent: LogDescription | null = null;
@@ -181,13 +182,13 @@ describe("Data store", function() {
         });
 
         it("Should not allow non-issuer to change security token address", async () => {
-            await expect(I_DataStore.connect(account_polymath).setSecurityToken(address_one)).to.be.reverted;
+            await expect(I_DataStore.connect(account_polymath).setSecurityToken(COMMON_ADDRESSES.ONE)).to.be.reverted;
         });
 
         it("Should allow issuer to change security token address", async () => {
             const snapId = await takeSnapshot();
-            await I_DataStore.connect(token_owner).setSecurityToken(address_one);
-            assert.equal(await I_DataStore.securityToken(), address_one, "Incorrect Security Token attached");
+            await I_DataStore.connect(token_owner).setSecurityToken(COMMON_ADDRESSES.ONE);
+            assert.equal(await I_DataStore.securityToken(), COMMON_ADDRESSES.ONE, "Incorrect Security Token attached");
             await revertToSnapshot(snapId);
             assert.equal(await I_DataStore.securityToken(), await I_SecurityToken.getAddress(), "Incorrect Security Token attached");
         });
@@ -206,13 +207,13 @@ describe("Data store", function() {
         });
 
         it("Should set and fetch address correctly", async () => {
-            await I_DataStore.connect(token_owner).setAddress(key, address_one);
-            assert.equal(await I_DataStore.addressGetter(key), address_one, "Incorrect Data Inserted");
+            await I_DataStore.connect(token_owner).setAddress(key, COMMON_ADDRESSES.ONE);
+            assert.equal(await I_DataStore.addressGetter(key), COMMON_ADDRESSES.ONE, "Incorrect Data Inserted");
         });
 
         it("Should set and fetch string correctly", async () => {
-            await I_DataStore.connect(token_owner).setString(key, name);
-            assert.equal(await I_DataStore.getString(key), name, "Incorrect Data Inserted");
+            await I_DataStore.connect(token_owner).setString(key, TOKEN_CONFIG.name);
+            assert.equal(await I_DataStore.getString(key), TOKEN_CONFIG.name, "Incorrect Data Inserted");
         });
 
         it("Should set and fetch bytes correctly", async () => {
@@ -250,7 +251,7 @@ describe("Data store", function() {
         });
 
         it("Should set and fetch address array correctly", async () => {
-            const arr = [address_zero, address_one];
+            const arr = [COMMON_ADDRESSES.ZERO, COMMON_ADDRESSES.ONE];
             await I_DataStore.connect(token_owner).setAddressArray(key, arr);
             const arr2 = await I_DataStore.getAddressArray(key);
             const arrLen = await I_DataStore.getAddressArrayLength(key);
@@ -295,12 +296,12 @@ describe("Data store", function() {
 
         it("Should insert address into Array", async () => {
             const arrLen = await I_DataStore.getAddressArrayLength(key);
-            await I_DataStore.connect(token_owner).insertAddress(key, address_one);
+            await I_DataStore.connect(token_owner).insertAddress(key, COMMON_ADDRESSES.ONE);
             const arrElement = await I_DataStore.getAddressArrayElement(key, Number(arrLen));
             const arrElements = await I_DataStore.getAddressArrayElements(key, 0, Number(arrLen));
             assert.equal(arrElement, arrElements[Number(arrLen)]);
             assert.equal(Number(arrLen) + 1, Number(await I_DataStore.getAddressArrayLength(key)), "Incorrect Array Length");
-            assert.equal(arrElement, address_one, "Incorrect array element");
+            assert.equal(arrElement, COMMON_ADDRESSES.ONE, "Incorrect array element");
         });
 
         it("Should insert bool into Array", async () => {
@@ -363,9 +364,9 @@ describe("Data store", function() {
         });
 
         it("Should set and fetch multiple address correctly", async () => {
-            await I_DataStore.connect(token_owner).setAddressMulti([key, key2], [address_one, address_two]);
-            assert.equal(await I_DataStore.addressGetter(key), address_one, "Incorrect Data Inserted");
-            assert.equal(await I_DataStore.addressGetter(key2), address_two, "Incorrect Data Inserted");
+            await I_DataStore.connect(token_owner).setAddressMulti([key, key2], [COMMON_ADDRESSES.ONE, COMMON_ADDRESSES.TWO]);
+            assert.equal(await I_DataStore.addressGetter(key), COMMON_ADDRESSES.ONE, "Incorrect Data Inserted");
+            assert.equal(await I_DataStore.addressGetter(key2), COMMON_ADDRESSES.TWO, "Incorrect Data Inserted");
         });
 
         it("Should set and fetch multiple bool correctly", async () => {
@@ -401,13 +402,13 @@ describe("Data store", function() {
         it("Should insert multiple address into multiple Array", async () => {
             let arrLen = await I_DataStore.getAddressArrayLength(key);
             let arrLen2 = await I_DataStore.getAddressArrayLength(key2);
-            await I_DataStore.connect(token_owner).insertAddressMulti([key, key2], [address_one, address_two]);
+            await I_DataStore.connect(token_owner).insertAddressMulti([key, key2], [COMMON_ADDRESSES.ONE, COMMON_ADDRESSES.TWO]);
             let arrElement = await I_DataStore.getAddressArrayElement(key, Number(arrLen));
             let arrElement2 = await I_DataStore.getAddressArrayElement(key2, Number(arrLen2));
             assert.equal(Number(arrLen) + 1, Number(await I_DataStore.getAddressArrayLength(key)), "Incorrect Array Length");
             assert.equal(Number(arrLen2) + 1, Number(await I_DataStore.getAddressArrayLength(key2)), "Incorrect Array Length");
-            assert.equal(arrElement, address_one, "Incorrect array element");
-            assert.equal(arrElement2, address_two, "Incorrect array element");
+            assert.equal(arrElement, COMMON_ADDRESSES.ONE, "Incorrect array element");
+            assert.equal(arrElement2, COMMON_ADDRESSES.TWO, "Incorrect array element");
         });
 
         it("Should insert multiple bool into multiple Array", async () => {
@@ -433,11 +434,11 @@ describe("Data store", function() {
         });
 
         it("Should not allow unauthorized addresses to modify address", async () => {
-            await expect(I_DataStore.connect(account_polymath).setAddress(key, address_one)).to.be.reverted;
+            await expect(I_DataStore.connect(account_polymath).setAddress(key, COMMON_ADDRESSES.ONE)).to.be.reverted;
         });
 
         it("Should not allow unauthorized addresses to modify string", async () => {
-            await expect(I_DataStore.connect(account_polymath).setString(key, name)).to.be.reverted;
+            await expect(I_DataStore.connect(account_polymath).setString(key, TOKEN_CONFIG.name)).to.be.reverted;
         });
 
         it("Should not allow unauthorized addresses to modify bytes", async () => {
@@ -459,7 +460,7 @@ describe("Data store", function() {
         });
 
         it("Should not allow unauthorized addresses to modify address array", async () => {
-            let arr = [address_zero, address_one];
+            let arr = [COMMON_ADDRESSES.ZERO, COMMON_ADDRESSES.ONE];
             await expect(I_DataStore.connect(account_polymath).setAddressArray(key, arr)).to.be.reverted;
         });
 
@@ -477,7 +478,7 @@ describe("Data store", function() {
         });
 
         it("Should not allow unauthorized addresses to insert address into Array", async () => {
-            await expect(I_DataStore.connect(account_polymath).insertAddress(key, address_one)).to.be.reverted;
+            await expect(I_DataStore.connect(account_polymath).insertAddress(key, COMMON_ADDRESSES.ONE)).to.be.reverted;
         });
 
         it("Should not allow unauthorized addresses to insert bool into Array", async () => {
@@ -509,7 +510,7 @@ describe("Data store", function() {
         });
 
         it("Should not allow unauthorized addresses to modify multiple address", async () => {
-            await expect(I_DataStore.connect(account_polymath).setAddressMulti([key, key2], [address_one, address_two])).to.be.reverted;
+            await expect(I_DataStore.connect(account_polymath).setAddressMulti([key, key2], [COMMON_ADDRESSES.ONE, COMMON_ADDRESSES.TWO])).to.be.reverted;
         });
 
         it("Should not allow unauthorized addresses to modify multiple bool", async () => {
@@ -525,7 +526,7 @@ describe("Data store", function() {
         });
 
         it("Should not allow unauthorized addresses to insert multiple address into multiple Array", async () => {
-            await expect(I_DataStore.connect(account_polymath).insertAddressMulti([key, key2], [address_one, address_two])).to.be.reverted;
+            await expect(I_DataStore.connect(account_polymath).insertAddressMulti([key, key2], [COMMON_ADDRESSES.ONE, COMMON_ADDRESSES.TWO])).to.be.reverted;
         });
 
         it("Should not allow unauthorized addresses to insert multiple bool into multiple Array", async () => {
