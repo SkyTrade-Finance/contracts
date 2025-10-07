@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
+import { HDNodeWallet } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 import { latestTime } from "./helpers/latestTime";
@@ -73,6 +74,23 @@ describe("Mass dividend stress test (ERC20)", function () {
         ethers.parseEther("10"),
         ethers.parseEther("20")
     ];
+
+    // Deterministic HD-based address generation for large holder sets
+    const DEFAULT_MNEMONIC = process.env.GENERATION_MNEMONIC || "test test test test test test test test test test test junk";
+    const HD_DERIVATION_PATH_PREFIX = "m/44'/60'/0'/0/";
+    // Offset derivation index to avoid overlapping with default hardhat signers
+    const HD_START_INDEX = process.env.GENERATION_OFFSET ? parseInt(process.env.GENERATION_OFFSET) : 1000;
+
+    function deriveHdAddresses(count: number, startIndex: number = HD_START_INDEX): string[] {
+        // Use a base account path, then derive relative children:  m/44'/60'/0'/0/{index}
+        const base = HDNodeWallet.fromPhrase(DEFAULT_MNEMONIC, undefined, "m/44'/60'/0'/0");
+        const addrs: string[] = [];
+        for (let i = 0; i < count; i++) {
+            const child = base.derivePath(`${startIndex + i}`);
+            addrs.push(child.address);
+        }
+        return addrs;
+    }
 
     before(async () => {
         accounts = await ethers.getSigners();
@@ -226,23 +244,12 @@ describe("Mass dividend stress test (ERC20)", function () {
     });
 
     it("Buy via STO (USD) for many holders (STO handles whitelisting)", async () => {
-        // Build synthetic investor list (EOAs). Use deterministic dummy addresses beyond available signers.
-        const investorAddresses: string[] = [];
+        // Build investor list using deterministic HD-derived addresses (scales to 10k+)
+        const investorAddresses: string[] = deriveHdAddresses(HOLDERS);
         const amounts: bigint[] = [];
         const now = BigInt(await latestTime());
 
-        const signersPool = accounts.slice(10); // leave early signers for control
-        const signerCount = signersPool.length;
-
-        for (let i = 0; i < HOLDERS; i++) {
-            if (i < signerCount) {
-                investorAddresses.push(signersPool[i].address);
-            } else {
-                // Create deterministic pseudo addresses for storage-only tracking; KYC + issuance require non-zero address
-                investorAddresses.push(ethers.getAddress(`0x${(i + 1000).toString(16).padStart(40, '0')}`));
-            }
-            amounts.push(HOLDER_PATTERN[i % HOLDER_PATTERN.length]);
-        }
+        for (let i = 0; i < HOLDERS; i++) amounts.push(HOLDER_PATTERN[i % HOLDER_PATTERN.length]);
 
         // No separate KYC: rely on STO buyWithUSD to whitelist beneficiaries
 
