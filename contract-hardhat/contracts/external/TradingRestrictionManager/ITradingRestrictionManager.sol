@@ -21,6 +21,7 @@ interface ITradingRestrictionManager {
     function updateMerkleRootWithSignature(
         bytes32 root,
         uint64 expiry,
+        uint256 nonce,
         bytes calldata signature
     ) external;
 
