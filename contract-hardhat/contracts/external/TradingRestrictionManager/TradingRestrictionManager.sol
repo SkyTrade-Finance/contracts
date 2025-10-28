@@ -123,6 +123,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
         bool isAccredited,
         InvestorClass investorClass
     ) external returns (bool) {
+        require(_rootExpiry > block.timestamp, "Merkle root has expired");
         require(expiry > block.timestamp, "Investor proof has expired");
 
         bytes32 firstHash = keccak256(abi.encode(investor, expiry, isAccredited, investorClass));
@@ -134,7 +135,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
             _existingInvestors[investor] = true;
         }
 
-        _kycData[investor] = InvestorKYCData(proof, expiry, investorClass);
+        _kycData[investor] = InvestorKYCData(expiry, investorClass);
 
         emit InvestorKYCDataUpdated(investor, proof, expiry, isAccredited, investorClass);
         return true;

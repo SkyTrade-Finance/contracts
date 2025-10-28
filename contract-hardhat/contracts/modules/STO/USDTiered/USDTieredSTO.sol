@@ -8,11 +8,12 @@ import "../../../libraries/DecimalMath.sol";
 import "./USDTieredSTOStorage.sol";
 import "../../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
 import "../../../interfaces/IPermit2.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title STO module for standard capped crowdsale
  */
-contract USDTieredSTO is USDTieredSTOStorage, STO {
+contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
 
     string internal constant POLY_ORACLE = "PolyUsdOracle";
     string internal constant ETH_ORACLE = "EthUsdOracle";
@@ -344,11 +345,6 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         emit SetAllowBeneficialInvestments(allowBeneficialInvestments);
     }
 
-    /**
-    * @notice receive function - assumes ETH being invested
-    */
-    receive() external payable {}
-
     // Buy functions without rate restriction
     fallback() external payable {
         buyWithETHRateLimited(msg.sender, 0);
@@ -402,6 +398,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         ITradingRestrictionManager.InvestorClass investorClass,
         bytes32 _signedRoot,
         uint64 _rootExpiry,
+        uint256 _signatureNonce,
         bytes calldata _signature,
         uint256 _nonce, 
         uint256 _deadline,
@@ -423,7 +420,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         }
 
         // With TradingRestrictionManager set, enforce merkle root update + verification
-        restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signature);
+        restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signatureNonce, _signature);
         require(
             restrictionManager.verifyInvestor(
                 proof,
@@ -451,15 +448,23 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
       * @param _beneficiary Address where security tokens will be sent
       * @param _minTokens Minumum number of tokens to buy or else revert
       */
-    function buyWithETHRateLimited(address _beneficiary, uint256 _minTokens) public payable validETH returns (uint256, uint256, uint256) {
+    function buyWithETHRateLimited(address _beneficiary, uint256 _minTokens) public payable validETH nonReentrant returns (uint256, uint256, uint256) {
         (uint256 rate, uint256 spentUSD, uint256 spentValue, uint256 initialMinted) = _getSpentvalues(_beneficiary,  msg.value, FundRaiseType.ETH, _minTokens);
         // Modify storage
         investorInvested[_beneficiary][uint8(FundRaiseType.ETH)] = investorInvested[_beneficiary][uint8(FundRaiseType.ETH)]+(spentValue);
         fundsRaised[uint8(FundRaiseType.ETH)] = fundsRaised[uint8(FundRaiseType.ETH)]+(spentValue);
-        // Forward ETH to issuer wallet
-        wallet.transfer(spentValue);
-        // Refund excess ETH to investor wallet
-        payable(msg.sender).transfer(msg.value-(spentValue));
+        
+        // Forward ETH to issuer wallet using low-level call
+        (bool success, ) = payable(wallet).call{value: spentValue}("");
+        require(success, "ETH transfer to issuer wallet failed");
+        
+        // Refund excess ETH to investor wallet using low-level call
+        uint256 refundAmount = msg.value - spentValue;
+        if (refundAmount > 0) {
+            (bool refundSuccess, ) = payable(msg.sender).call{value: refundAmount}("");
+            require(refundSuccess, "ETH refund to investor failed");
+        }
+        
         emit FundsReceived(msg.sender, _beneficiary, spentUSD, FundRaiseType.ETH, msg.value, spentValue, rate);
         return (spentUSD, spentValue, getTokensMinted()-(initialMinted));
     }

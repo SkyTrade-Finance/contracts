@@ -5,7 +5,6 @@ interface ITradingRestrictionManager {
     enum InvestorClass { NonUS, US }
 
     struct InvestorKYCData {
-        bytes32[] proof;
         uint64 expiryTime;
         InvestorClass investorClass;
     }
