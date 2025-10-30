@@ -9,11 +9,15 @@ import "./USDTieredSTOStorage.sol";
 import "../../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
 import "../../../interfaces/IPermit2.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20 as IERC20Safe} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title STO module for standard capped crowdsale
  */
 contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
+
+    using SafeERC20 for IERC20Safe;
 
     string internal constant POLY_ORACLE = "PolyUsdOracle";
     string internal constant ETH_ORACLE = "EthUsdOracle";
@@ -557,7 +561,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
         if(address(_token) != address(polyToken))
             stableCoinsRaised[address(_token)] = stableCoinsRaised[address(_token)]+(spentValue);
         // Forward coins to issuer wallet
-        require(_token.transferFrom(msg.sender, wallet, spentValue), "Transfer failed");
+        IERC20Safe(address(_token)).safeTransferFrom(msg.sender, wallet, spentValue);
         emit FundsReceived(msg.sender, _beneficiary, spentUSD, _fundRaiseType, _tokenAmount, spentValue, rate);
         return (spentUSD, spentValue, getTokensMinted()-(initialMinted));
     }
