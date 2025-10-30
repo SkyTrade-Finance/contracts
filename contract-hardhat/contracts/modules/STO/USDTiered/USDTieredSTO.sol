@@ -492,7 +492,12 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
     function buyWithUSDRateLimited(address _beneficiary, uint256 _investedSC, uint256 _minTokens, IERC20 _usdToken)
         public validSC(address(_usdToken)) returns (uint256, uint256, uint256)
     {
-        return _buyWithTokens(_beneficiary, _investedSC, FundRaiseType.SC, _minTokens, _usdToken);
+        // If _minTokens is 0, calculate minimum based on minimumInvestmentUSD to protect against slippage
+        uint256 effectiveMinTokens = _minTokens;
+        if (_minTokens == 0 && minimumInvestmentUSD > 0) {
+            effectiveMinTokens = _calculateMinimumTokens(minimumInvestmentUSD);
+        }
+        return _buyWithTokens(_beneficiary, _investedSC, FundRaiseType.SC, effectiveMinTokens, _usdToken);
     }
 
     /**
@@ -925,5 +930,39 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
         oracleAddress = customOracles[_currency][_denominatedCurrency];
         if (oracleAddress == address(0))
             oracleAddress =  IPolymathRegistry(securityToken.polymathRegistry()).addressGetter(oracleKeys[_currency][_denominatedCurrency]);
+    }
+
+    /**
+     * @notice Calculate minimum tokens based on USD amount to protect against slippage
+     * @param _usdAmount USD amount to calculate minimum tokens for
+     * @return Minimum number of tokens that should be received
+     */
+    function _calculateMinimumTokens(uint256 _usdAmount) internal view returns(uint256) {
+        if (tiers.length == 0 || currentTier >= tiers.length) {
+            return 0;
+        }
+        
+        // Get the current tier's rate (price per token in USD)
+        uint256 tierPrice = tiers[currentTier].rate;
+        
+        // If current tier is using discounted POLY rate and has discounted tokens available
+        // use the discounted rate for a more conservative estimate
+        if (tiers[currentTier].mintedDiscountPoly < tiers[currentTier].tokensDiscountPoly && 
+            tiers[currentTier].rateDiscountPoly > 0) {
+            tierPrice = tiers[currentTier].rateDiscountPoly;
+        }
+        
+        if (tierPrice == 0) {
+            return 0;
+        }
+        
+        // Calculate minimum tokens: usdAmount / tierPrice
+        uint256 minTokens = DecimalMath.div(_usdAmount, tierPrice);
+        
+        // Adjust for granularity to ensure realistic minimum
+        uint256 granularity = securityToken.granularity();
+        minTokens = (minTokens / granularity) * granularity;
+        
+        return minTokens;
     }
 }

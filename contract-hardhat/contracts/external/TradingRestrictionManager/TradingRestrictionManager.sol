@@ -45,10 +45,11 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
      * @notice Updates the Merkle root for investor KYC validation.
      * @param root The new Merkle root hash
      */
-    function modifyKYCData(bytes32 root) external onlyOperator {
+    function modifyKYCData(bytes32 root, uint64 expiry) external onlyOperator {
         require(root != bytes32(0), "Invalid root");
+        require(expiry > block.timestamp, "Expiry must be in the future");
         
-        _rootExpiry = uint64(block.timestamp + 604800); // always set expiry to 1 week
+        _rootExpiry = expiry;
         _root = root;
         emit MerkleRootUpdated(_root);
     }
