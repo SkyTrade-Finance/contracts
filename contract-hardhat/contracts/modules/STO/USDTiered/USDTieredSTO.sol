@@ -398,7 +398,6 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
         ITradingRestrictionManager.InvestorClass investorClass,
         bytes32 _signedRoot,
         uint64 _rootExpiry,
-        uint256 _signatureNonce,
         bytes calldata _signature,
         uint256 _nonce, 
         uint256 _deadline,
@@ -420,7 +419,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
         }
 
         // With TradingRestrictionManager set, enforce merkle root update + verification
-        restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signatureNonce, _signature);
+        restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signature);
         require(
             restrictionManager.verifyInvestor(
                 proof,

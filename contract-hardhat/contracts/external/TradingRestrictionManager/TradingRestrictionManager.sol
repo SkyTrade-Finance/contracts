@@ -12,7 +12,6 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
     constructor() {}
 
     mapping(address => bool) public isOperator;
-    mapping(address => uint256) public operatorNonces;
     mapping(address => InvestorKYCData) private _kycData;
     mapping(address => bool) private _existingInvestors;
 
@@ -58,26 +57,20 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
      * @notice Updates the Merkle root with signed data from operator
      * @param root The new Merkle root hash
      * @param expiry The expiry timestamp for this root
-     * @param nonce The nonce to prevent replay attacks
      * @param signature The signature from the operator
      */
-    function updateMerkleRootWithSignature(bytes32 root, uint64 expiry, uint256 nonce, bytes calldata signature) external {
+    function updateMerkleRootWithSignature(bytes32 root, uint64 expiry, bytes calldata signature) external {
         require(root != bytes32(0), "Invalid root");
         require(expiry >= block.timestamp, "Expiry must be in the future");
         require(expiry >= _rootExpiry, "New expiry must be later than current");
         require(signature.length > 0, "Signature required for merkle root update");
         
         // Verify the signature is from an operator
-        bytes32 messageHash = keccak256(abi.encodePacked(root, expiry, nonce));
+        bytes32 messageHash = keccak256(abi.encodePacked(root, expiry));
         bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
         address signer = _recoverSigner(ethSignedMessageHash, signature);
         
         require(isOperator[signer], "Signature must be from operator");
-        require(nonce == operatorNonces[signer], "Invalid nonce");
-        
-        // Increment nonce to prevent replay attacks
-        operatorNonces[signer]++;
-        
         _root = root;
         _rootExpiry = expiry;
         emit MerkleRootUpdated(_root);
@@ -135,7 +128,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
             _existingInvestors[investor] = true;
         }
 
-        _kycData[investor] = InvestorKYCData(expiry, investorClass);
+        _kycData[investor] = InvestorKYCData(proof, expiry, investorClass);
 
         emit InvestorKYCDataUpdated(investor, proof, expiry, isAccredited, investorClass);
         return true;

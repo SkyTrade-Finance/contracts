@@ -5,6 +5,7 @@ interface ITradingRestrictionManager {
     enum InvestorClass { NonUS, US }
 
     struct InvestorKYCData {
+        bytes32[] proof;
         uint64 expiryTime;
         InvestorClass investorClass;
     }
@@ -20,7 +21,6 @@ interface ITradingRestrictionManager {
     function updateMerkleRootWithSignature(
         bytes32 root,
         uint64 expiry,
-        uint256 nonce,
         bytes calldata signature
     ) external;
 
