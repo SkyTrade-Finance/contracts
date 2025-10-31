@@ -30,9 +30,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  */
 contract SecurityToken is ERC20, ReentrancyGuard, SecurityTokenStorage, IERC1594, IERC1643, IERC1644, IERC1410, Proxy {
 
-    // Allow the contract to receive Ether
-    receive() external payable {}
-
     // Emit at the time when module get added
     event ModuleAdded(
         uint8[] _types,

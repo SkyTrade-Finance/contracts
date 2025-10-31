@@ -15,7 +15,8 @@ interface ITradingRestrictionManager {
     event MerkleRootUpdated(bytes32 root);
 
     function modifyKYCData(
-        bytes32 root
+        bytes32 root,
+        uint64 expiry
     ) external;
 
     function updateMerkleRootWithSignature(
