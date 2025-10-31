@@ -57,6 +57,10 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
     );
     event SetTreasuryWallet(address _oldWallet, address _newWallet);
 
+    error InvestorVerificationFailed();
+    error IssuerTransferFailed();
+    error RefundTransferFailed();
+
     ///////////////
     // Modifiers //
     ///////////////
@@ -363,19 +367,6 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
         return buyWithPOLYRateLimited(_beneficiary, _investedPOLY, 0);
     }
 
-    // function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken, bytes32[] calldata proof, uint64 expiry, bool isAccredited, ITradingRestrictionManager.InvestorClass investorClass) external returns (uint256, uint256, uint256) {
-    //     ITradingRestrictionManager restrictionManager = getTradingRestrictionManager();
-    //     if (address(restrictionManager) == address(0)) {    
-    //         return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-    //     } else {
-    //         require (
-    //             ITradingRestrictionManager(restrictionManager).verifyInvestor(proof, _beneficiary, expiry, isAccredited, investorClass),
-    //             "Investor verification failed"
-    //         );
-    //         return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-    //     }
-    // }
-
     /**
      * @notice Purchase tokens using USD with optional Permit2 support
      * @param _beneficiary Address where security tokens will be sent
@@ -424,16 +415,15 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
 
         // With TradingRestrictionManager set, enforce merkle root update + verification
         restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signature);
-        require(
-            restrictionManager.verifyInvestor(
+        if (
+            !restrictionManager.verifyInvestor(
                 proof,
                 _beneficiary,
                 expiry,
                 isAccredited,
                 investorClass
-            ),
-            "Investor verification failed"
-        );
+            )
+        ) revert InvestorVerificationFailed();
 
         // Prefer Permit2 if properly configured, else use standard transferFrom path
         // Use Permit2 only when a valid signature is provided
@@ -459,13 +449,13 @@ contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
         
         // Forward ETH to issuer wallet using low-level call
         (bool success, ) = payable(wallet).call{value: spentValue}("");
-        require(success, "ETH transfer to issuer wallet failed");
+        if (!success) revert IssuerTransferFailed();
         
         // Refund excess ETH to investor wallet using low-level call
         uint256 refundAmount = msg.value - spentValue;
         if (refundAmount > 0) {
             (bool refundSuccess, ) = payable(msg.sender).call{value: refundAmount}("");
-            require(refundSuccess, "ETH refund to investor failed");
+            if (!refundSuccess) revert RefundTransferFailed();
         }
         
         emit FundsReceived(msg.sender, _beneficiary, spentUSD, FundRaiseType.ETH, msg.value, spentValue, rate);
