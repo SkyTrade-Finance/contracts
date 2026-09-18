@@ -69,6 +69,7 @@ const config: HardhatUserConfig = {
         blockNumber: FORK_BLOCK ? Number(FORK_BLOCK) : undefined,
       } : undefined,
       chainId: 1337,
+      // allowUnlimitedContractSize: true,
     },
     localhost: {
       chainId: 1337,

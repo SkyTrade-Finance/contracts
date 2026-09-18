@@ -8,11 +8,16 @@ import "../../../libraries/DecimalMath.sol";
 import "./USDTieredSTOStorage.sol";
 import "../../../external/TradingRestrictionManager/ITradingRestrictionManager.sol";
 import "../../../interfaces/IPermit2.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20 as IERC20Safe} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title STO module for standard capped crowdsale
  */
-contract USDTieredSTO is USDTieredSTOStorage, STO {
+contract USDTieredSTO is USDTieredSTOStorage, STO, ReentrancyGuard {
+
+    using SafeERC20 for IERC20Safe;
 
     string internal constant POLY_ORACLE = "PolyUsdOracle";
     string internal constant ETH_ORACLE = "EthUsdOracle";
@@ -51,6 +56,10 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         uint256[] _tokensPerTierDiscountPoly
     );
     event SetTreasuryWallet(address _oldWallet, address _newWallet);
+
+    error InvestorVerificationFailed();
+    error IssuerTransferFailed();
+    error RefundTransferFailed();
 
     ///////////////
     // Modifiers //
@@ -344,11 +353,6 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         emit SetAllowBeneficialInvestments(allowBeneficialInvestments);
     }
 
-    /**
-    * @notice receive function - assumes ETH being invested
-    */
-    receive() external payable {}
-
     // Buy functions without rate restriction
     fallback() external payable {
         buyWithETHRateLimited(msg.sender, 0);
@@ -362,19 +366,6 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
     function buyWithPOLY(address _beneficiary, uint256 _investedPOLY) external returns (uint256, uint256, uint256) {
         return buyWithPOLYRateLimited(_beneficiary, _investedPOLY, 0);
     }
-
-    // function buyWithUSD(address _beneficiary, uint256 _investedSC, IERC20 _usdToken, bytes32[] calldata proof, uint64 expiry, bool isAccredited, ITradingRestrictionManager.InvestorClass investorClass) external returns (uint256, uint256, uint256) {
-    //     ITradingRestrictionManager restrictionManager = getTradingRestrictionManager();
-    //     if (address(restrictionManager) == address(0)) {    
-    //         return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-    //     } else {
-    //         require (
-    //             ITradingRestrictionManager(restrictionManager).verifyInvestor(proof, _beneficiary, expiry, isAccredited, investorClass),
-    //             "Investor verification failed"
-    //         );
-    //         return buyWithUSDRateLimited(_beneficiary, _investedSC, 0, _usdToken);
-    //     }
-    // }
 
     /**
      * @notice Purchase tokens using USD with optional Permit2 support
@@ -424,16 +415,15 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
 
         // With TradingRestrictionManager set, enforce merkle root update + verification
         restrictionManager.updateMerkleRootWithSignature(_signedRoot, _rootExpiry, _signature);
-        require(
-            restrictionManager.verifyInvestor(
+        if (
+            !restrictionManager.verifyInvestor(
                 proof,
                 _beneficiary,
                 expiry,
                 isAccredited,
                 investorClass
-            ),
-            "Investor verification failed"
-        );
+            )
+        ) revert InvestorVerificationFailed();
 
         // Prefer Permit2 if properly configured, else use standard transferFrom path
         // Use Permit2 only when a valid signature is provided
@@ -451,15 +441,23 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
       * @param _beneficiary Address where security tokens will be sent
       * @param _minTokens Minumum number of tokens to buy or else revert
       */
-    function buyWithETHRateLimited(address _beneficiary, uint256 _minTokens) public payable validETH returns (uint256, uint256, uint256) {
+    function buyWithETHRateLimited(address _beneficiary, uint256 _minTokens) public payable validETH nonReentrant returns (uint256, uint256, uint256) {
         (uint256 rate, uint256 spentUSD, uint256 spentValue, uint256 initialMinted) = _getSpentvalues(_beneficiary,  msg.value, FundRaiseType.ETH, _minTokens);
         // Modify storage
         investorInvested[_beneficiary][uint8(FundRaiseType.ETH)] = investorInvested[_beneficiary][uint8(FundRaiseType.ETH)]+(spentValue);
         fundsRaised[uint8(FundRaiseType.ETH)] = fundsRaised[uint8(FundRaiseType.ETH)]+(spentValue);
-        // Forward ETH to issuer wallet
-        wallet.transfer(spentValue);
-        // Refund excess ETH to investor wallet
-        payable(msg.sender).transfer(msg.value-(spentValue));
+        
+        // Forward ETH to issuer wallet using low-level call
+        (bool success, ) = payable(wallet).call{value: spentValue}("");
+        if (!success) revert IssuerTransferFailed();
+        
+        // Refund excess ETH to investor wallet using low-level call
+        uint256 refundAmount = msg.value - spentValue;
+        if (refundAmount > 0) {
+            (bool refundSuccess, ) = payable(msg.sender).call{value: refundAmount}("");
+            if (!refundSuccess) revert RefundTransferFailed();
+        }
+        
         emit FundsReceived(msg.sender, _beneficiary, spentUSD, FundRaiseType.ETH, msg.value, spentValue, rate);
         return (spentUSD, spentValue, getTokensMinted()-(initialMinted));
     }
@@ -484,7 +482,12 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
     function buyWithUSDRateLimited(address _beneficiary, uint256 _investedSC, uint256 _minTokens, IERC20 _usdToken)
         public validSC(address(_usdToken)) returns (uint256, uint256, uint256)
     {
-        return _buyWithTokens(_beneficiary, _investedSC, FundRaiseType.SC, _minTokens, _usdToken);
+        // If _minTokens is 0, calculate minimum based on minimumInvestmentUSD to protect against slippage
+        uint256 effectiveMinTokens = _minTokens;
+        if (_minTokens == 0 && minimumInvestmentUSD > 0) {
+            effectiveMinTokens = _calculateMinimumTokens(minimumInvestmentUSD);
+        }
+        return _buyWithTokens(_beneficiary, _investedSC, FundRaiseType.SC, effectiveMinTokens, _usdToken);
     }
 
     /**
@@ -553,7 +556,7 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         if(address(_token) != address(polyToken))
             stableCoinsRaised[address(_token)] = stableCoinsRaised[address(_token)]+(spentValue);
         // Forward coins to issuer wallet
-        require(_token.transferFrom(msg.sender, wallet, spentValue), "Transfer failed");
+        IERC20Safe(address(_token)).safeTransferFrom(msg.sender, wallet, spentValue);
         emit FundsReceived(msg.sender, _beneficiary, spentUSD, _fundRaiseType, _tokenAmount, spentValue, rate);
         return (spentUSD, spentValue, getTokensMinted()-(initialMinted));
     }
@@ -917,5 +920,39 @@ contract USDTieredSTO is USDTieredSTOStorage, STO {
         oracleAddress = customOracles[_currency][_denominatedCurrency];
         if (oracleAddress == address(0))
             oracleAddress =  IPolymathRegistry(securityToken.polymathRegistry()).addressGetter(oracleKeys[_currency][_denominatedCurrency]);
+    }
+
+    /**
+     * @notice Calculate minimum tokens based on USD amount to protect against slippage
+     * @param _usdAmount USD amount to calculate minimum tokens for
+     * @return Minimum number of tokens that should be received
+     */
+    function _calculateMinimumTokens(uint256 _usdAmount) internal view returns(uint256) {
+        if (tiers.length == 0 || currentTier >= tiers.length) {
+            return 0;
+        }
+        
+        // Get the current tier's rate (price per token in USD)
+        uint256 tierPrice = tiers[currentTier].rate;
+        
+        // If current tier is using discounted POLY rate and has discounted tokens available
+        // use the discounted rate for a more conservative estimate
+        if (tiers[currentTier].mintedDiscountPoly < tiers[currentTier].tokensDiscountPoly && 
+            tiers[currentTier].rateDiscountPoly > 0) {
+            tierPrice = tiers[currentTier].rateDiscountPoly;
+        }
+        
+        if (tierPrice == 0) {
+            return 0;
+        }
+        
+        // Calculate minimum tokens: usdAmount / tierPrice
+        uint256 minTokens = DecimalMath.div(_usdAmount, tierPrice);
+        
+        // Adjust for granularity to ensure realistic minimum
+        uint256 granularity = securityToken.granularity();
+        minTokens = (minTokens / granularity) * granularity;
+        
+        return minTokens;
     }
 }

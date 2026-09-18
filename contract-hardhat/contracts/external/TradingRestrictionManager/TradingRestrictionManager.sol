@@ -45,15 +45,11 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
      * @notice Updates the Merkle root for investor KYC validation.
      * @param root The new Merkle root hash
      */
-    function modifyKYCData(bytes32 root) external onlyOperator {
+    function modifyKYCData(bytes32 root, uint64 expiry) external onlyOperator {
         require(root != bytes32(0), "Invalid root");
+        require(expiry > block.timestamp, "Expiry must be in the future");
         
-        // If this is the first time setting the root (initialization)
-        if (_root == bytes32(0)) {
-            // For initialization, set expiry to 1 week from now
-            _rootExpiry = uint64(block.timestamp + 604800); // 1 week
-        }
-        
+        _rootExpiry = expiry;
         _root = root;
         emit MerkleRootUpdated(_root);
     }
@@ -76,7 +72,6 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
         address signer = _recoverSigner(ethSignedMessageHash, signature);
         
         require(isOperator[signer], "Signature must be from operator");
-        
         _root = root;
         _rootExpiry = expiry;
         emit MerkleRootUpdated(_root);
@@ -122,6 +117,7 @@ contract TradingRestrictionManager is ITradingRestrictionManager, Ownable {
         bool isAccredited,
         InvestorClass investorClass
     ) external returns (bool) {
+        require(_rootExpiry > block.timestamp, "Merkle root has expired");
         require(expiry > block.timestamp, "Investor proof has expired");
 
         bytes32 firstHash = keccak256(abi.encode(investor, expiry, isAccredited, investorClass));

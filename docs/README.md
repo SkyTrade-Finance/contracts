@@ -1,9 +1,15 @@
+> **SkyTrade Finance (STF) fork — historical Polymath documentation below.**
+>
+> Use [`../contract-hardhat/README.md`](../contract-hardhat/README.md) for the active workspace, supported workflows, STF changes, and deployment instructions. The Truffle setup, CLI guidance, network tables, and generated API pages below describe the upstream Polymath project and must not be used to deploy STF.
+>
+> STF adds `TradingRestrictionManager` and chain-specific Permit2 integration configured with `PERMIT2_ADDRESS`.
+
 [![Build Status](https://travis-ci.org/PolymathNetwork/polymath-core.svg?branch=master)](https://travis-ci.org/PolymathNetwork/polymath-core)
 [![Coverage Status](https://coveralls.io/repos/github/PolymathNetwork/polymath-core/badge.svg?branch=master)](https://coveralls.io/github/PolymathNetwork/polymath-core?branch=master)
 [![Gitter](https://img.shields.io/badge/chat-gitter-green.svg)](https://gitter.im/PolymathNetwork/Lobby)
 [![Telegram](https://img.shields.io/badge/50k+-telegram-blue.svg)](https://t.me/polymathnetwork) [![Greenkeeper badge](https://badges.greenkeeper.io/PolymathNetwork/polymath-core.svg)](https://greenkeeper.io/)
 
-![Polymath logo](Polymath.png)
+![Polymath logo](../Polymath.png)
 
 # Polymath Core
 The Polymath Core smart contracts provide a system for launching regulatory-compliant securities tokens on a decentralized blockchain. This particular repository is the implementation of a system that allows for the creation of ST-20-compatible tokens. This system has a modular design that promotes a variety of pluggable components for various types of issuances, legal requirements, and offering processes.

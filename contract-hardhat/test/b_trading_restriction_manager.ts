@@ -1161,7 +1161,7 @@ describe("TradingRestrictionManager", function() {
       const futureTree = StandardMerkleTree.of(values, ["address","uint64","bool","uint64"]);
       const futureRoot = futureTree.root;
       const futureProof = futureTree.getProof(0);
-      await I_TradingRestrictionManager.connect(operator).modifyKYCData(futureRoot);
+      await I_TradingRestrictionManager.connect(operator).modifyKYCData(futureRoot, futureExpiry);
       await expect(
         I_TradingRestrictionManager.connect(investor1).verifyInvestor(
           futureProof,
@@ -1174,7 +1174,7 @@ describe("TradingRestrictionManager", function() {
     });
 
     it("should handle zero restriction periods", async function() {
-      await I_TradingRestrictionManager.connect(operator).modifyKYCData(merkleRoot);
+      await I_TradingRestrictionManager.connect(operator).modifyKYCData(merkleRoot, expiry);
       await I_TradingRestrictionManager.connect(investor1).verifyInvestor(
         proof1,
         investor1.address,

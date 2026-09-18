@@ -8,9 +8,9 @@ dataSources:
     name: TradingRestrictionManager
     network: monad-testnet
     source:
-      address: '0x612575FdbF7ca259fF1C73bBBDD9f392755aeF31'
+      address: '0xE1b5ab6E27133d24bBa010D59c8B6Cb2BAA80195'
       abi: TradingRestrictionManager
-      startBlock: 29339424
+      startBlock: 63040980
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -20,7 +20,7 @@ dataSources:
         - MerkleRoot
       abis:
         - name: TradingRestrictionManager
-          file: ../../build/contracts/TradingRestrictionManager.json
+          file: ../build/contracts/TradingRestrictionManager.json
       eventHandlers:
         - event: MerkleRootUpdated(bytes32)
           handler: handleMerkleRootUpdated
@@ -29,9 +29,9 @@ dataSources:
     name: USDTieredSTOFactory
     network: monad-testnet
     source:
-      address: '0xd424E85a79d57037eec44d51126220738aFb0573'
+      address: '0xF41DC8e89122E40087cAf67387dE34ff2551796d'
       abi: USDTieredSTOFactory
-      startBlock: 29339424
+      startBlock: 63040980
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -41,7 +41,7 @@ dataSources:
         - USDTieredSTOFactory
       abis:
         - name: USDTieredSTOFactory
-          file: ../../build/contracts/USDTieredSTOFactory.json
+          file: ../build/contracts/USDTieredSTOFactory.json
       eventHandlers:
         - event: GenerateModuleFromFactory(address,indexed bytes32,indexed address,address,uint256,uint256)
           handler: handleGenerateModuleFromUSDTieredSTOFactory
@@ -50,9 +50,9 @@ dataSources:
     name: ERC20DividendCheckpointFactory
     network: monad-testnet
     source:
-      address: '0xBFE7724f5279d008DC9110E10f2A222C62e0D5CB'
+      address: '0x2A2370CeF46F38dde68fC25c1d07f001e633d633'
       abi: ERC20DividendCheckpointFactory
-      startBlock: 29339424
+      startBlock: 63040980
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -62,7 +62,7 @@ dataSources:
         - ERC20DividendCheckpointFactory
       abis:
         - name: ERC20DividendCheckpointFactory
-          file: ../../build/contracts/ERC20DividendCheckpointFactory.json
+          file: ../build/contracts/ERC20DividendCheckpointFactory.json
       eventHandlers:
         - event: GenerateModuleFromFactory(address,indexed bytes32,indexed address,address,uint256,uint256)
           handler: handleGenerateModuleFromERC20DividendCheckpointFactory
@@ -71,9 +71,9 @@ dataSources:
     name: GeneralTransferManagerFactory
     network: monad-testnet
     source:
-      address: '0x1dE4e9F8f816b814F6794058167e433952f6bA62'
+      address: '0x25CfceA12a742488DCcBeBcb2E80C424F3c9a19B'
       abi: GeneralTransferManagerFactory
-      startBlock: 29339424
+      startBlock: 63040980
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -83,7 +83,7 @@ dataSources:
         - GeneralTransferManagerFactory
       abis:
         - name: GeneralTransferManagerFactory
-          file: ../../build/contracts/GeneralTransferManagerFactory.json
+          file: ../build/contracts/GeneralTransferManagerFactory.json
       eventHandlers:
         - event: GenerateModuleFromFactory(address,indexed bytes32,indexed address,address,uint256,uint256)
           handler: handleGenerateModuleFromGeneralTransferManagerFactory
@@ -92,9 +92,9 @@ dataSources:
     name: SecurityTokenRegistry
     network: monad-testnet
     source:
-      address: '0xAC28c0be35b7BD13269aE04FB46e09C7c68d4564'
+      address: '0x24D35199248b3323Dd9FFdD27Aab0A3Bcd48483E'
       abi: SecurityTokenRegistry
-      startBlock: 29339424
+      startBlock: 63040980
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -104,7 +104,7 @@ dataSources:
         - SecurityToken
       abis:
         - name: SecurityTokenRegistry
-          file: ../../build/contracts/SecurityTokenRegistry.json
+          file: ../build/contracts/SecurityTokenRegistry.json
       eventHandlers:
         - event: NewSecurityToken(string,string,indexed address,indexed address,uint256,address,bool,uint256,uint256,uint256)
           handler: handleNewSecurityTokenCreation
@@ -125,9 +125,9 @@ templates:
         - USDTieredSTO
       abis:
         - name: USDTieredSTO
-          file: ../../build/contracts/USDTieredSTO.json
+          file: ../build/contracts/USDTieredSTO.json
         - name: ERC20
-          file: ../../build/contracts/SecurityToken.json
+          file: ../build/contracts/SecurityToken.json
       eventHandlers:
         - event: TokenPurchase(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleTokenPurchase
@@ -150,9 +150,9 @@ templates:
         - UserDividend
       abis:
         - name: ERC20DividendCheckpoint
-          file: ../../build/contracts/ERC20DividendCheckpoint.json
+          file: ../build/contracts/ERC20DividendCheckpoint.json
         - name: ERC20
-          file: ../../build/contracts/SecurityToken.json
+          file: ../build/contracts/SecurityToken.json
       eventHandlers:
         - event: ERC20DividendDeposited(indexed address,uint256,uint256,uint256,indexed address,uint256,uint256,uint256,indexed bytes32)
           handler: handleDividendCreation
@@ -177,7 +177,7 @@ templates:
         - AccountUser
       abis:
         - name: SecurityToken
-          file: ../../build/contracts/SecurityToken.json
+          file: ../build/contracts/SecurityToken.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
