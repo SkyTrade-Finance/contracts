@@ -1,3 +1,9 @@
+> **SkyTrade Finance (STF) fork — historical Polymath documentation below.**
+>
+> Use [`contract-hardhat/README.md`](./contract-hardhat/README.md) for the active workspace, supported workflows, STF changes, and deployment instructions. The Truffle setup, CLI guidance, network tables, and API references below describe the upstream Polymath project and must not be used to deploy STF.
+>
+> STF adds `TradingRestrictionManager` and chain-specific Permit2 integration configured with `PERMIT2_ADDRESS`.
+
 [![Build Status](https://travis-ci.org/PolymathNetwork/polymath-core.svg?branch=master)](https://travis-ci.org/PolymathNetwork/polymath-core)
 [![Coverage Status](https://coveralls.io/repos/github/PolymathNetwork/polymath-core/badge.svg?branch=master)](https://coveralls.io/github/PolymathNetwork/polymath-core?branch=master)
 [![Gitter](https://img.shields.io/badge/chat-gitter-green.svg)](https://gitter.im/PolymathNetwork/Lobby)
